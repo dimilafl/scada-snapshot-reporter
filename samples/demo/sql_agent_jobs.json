@@ -1,0 +1,30 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Instance": ".",
+    "JobName": "Nightly SCADA ETL",
+    "Enabled": true,
+    "LastRunDate": "20260603",
+    "LastRunTime": "020000",
+    "LastRunStatus": 0,
+    "LastRunDuration": 125,
+    "LastRunMessage": "The job failed. The step failed.",
+    "DateCreated": "2025-01-10T08:00:00",
+    "DateModified": "2026-06-01T09:30:00",
+    "JobOwner": "DEMO\\collector-sqlagent"
+  },
+  {
+    "Server": "localhost",
+    "Instance": ".",
+    "JobName": "DataHistory Cleanup",
+    "Enabled": true,
+    "LastRunDate": "20260530",
+    "LastRunTime": "030000",
+    "LastRunStatus": 1,
+    "LastRunDuration": 300,
+    "LastRunMessage": "The job succeeded.",
+    "DateCreated": "2025-02-15T08:00:00",
+    "DateModified": "2026-05-15T09:30:00",
+    "JobOwner": "DEMO\\collector-sqlagent"
+  }
+]

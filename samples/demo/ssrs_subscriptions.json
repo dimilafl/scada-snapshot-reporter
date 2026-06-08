@@ -1,0 +1,24 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Instance": ".",
+    "ReportPath": "/Demo/Daily Shift Summary",
+    "SubscriptionDescription": "Daily 06:00 shift summary",
+    "Owner": "DEMO\\former.operator",
+    "OwnerExists": false,
+    "LastStatus": "Done: 1 processed of 1 total; 0 errors.",
+    "LastRunTime": "2026-06-03T06:00:00",
+    "Enabled": true
+  },
+  {
+    "Server": "localhost",
+    "Instance": ".",
+    "ReportPath": "/Demo/Flow Totals",
+    "SubscriptionDescription": "Hourly flow total delivery",
+    "Owner": "DEMO\\collector-ssrs",
+    "OwnerExists": true,
+    "LastStatus": "Failure sending mail: mailbox unavailable",
+    "LastRunTime": "2026-06-03T05:00:00",
+    "Enabled": true
+  }
+]

@@ -1,0 +1,12 @@
+﻿[
+  {
+    "Server": "localhost",
+    "DsnName": "DataHistory",
+    "DriverName": "SQL Server",
+    "Type": "System",
+    "Architecture": "64-bit",
+    "ServerTarget": "demo-sql-01",
+    "Database": "DemoDB",
+    "ConnectionPassed": false
+  }
+]

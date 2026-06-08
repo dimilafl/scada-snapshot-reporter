@@ -1,0 +1,22 @@
+﻿[
+  {
+    "Server": "localhost",
+    "LogName": "Application",
+    "Source": "Demo Control Engine",
+    "Level": 2,
+    "Count": 5,
+    "NewestTime": "2026-06-03T08:15:00",
+    "NewestEventId": 4502,
+    "WindowHours": 24
+  },
+  {
+    "Server": "localhost",
+    "LogName": "System",
+    "Source": "Disk",
+    "Level": 1,
+    "Count": 1,
+    "NewestTime": "2026-06-03T07:30:00",
+    "NewestEventId": 7,
+    "WindowHours": 24
+  }
+]

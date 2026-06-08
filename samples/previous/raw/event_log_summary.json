@@ -1,0 +1,12 @@
+﻿[
+  {
+    "server": "localhost",
+    "logName": "System",
+    "source": "Service Control Manager",
+    "level": 2,
+    "count": 4,
+    "newestTime": "2026-06-02T10:00:00",
+    "newestEventId": 7031,
+    "windowHours": 24
+  }
+]

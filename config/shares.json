@@ -1,0 +1,8 @@
+﻿{
+  "shares": [
+    {
+      "name": "DemoShare",
+      "path": "\\\\localhost\\DemoShare"
+    }
+  ]
+}

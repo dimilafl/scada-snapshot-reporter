@@ -1,0 +1,27 @@
+Output/
+publish/
+bin/
+obj/
+*.user
+*.suo
+*.log
+gui-settings.json
+
+# generated reports / collector output
+**/expected-output/
+**/exceptions.csv
+**/*.html
+
+# local environment/config artifacts
+.env
+*.env
+secrets.*
+*_secrets.*
+appsettings.Production.json
+appsettings.Local.json
+
+# raw collector output (keep only explicitly sanitized samples)
+**/raw/*.json
+!samples/demo/*.json
+!samples/drift-current/raw/*.json
+!samples/previous/raw/*.json

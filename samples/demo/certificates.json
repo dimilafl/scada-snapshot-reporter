@@ -1,0 +1,22 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Subject": "CN=demo-pi.example.invalid",
+    "Issuer": "CN=Demo Enterprise CA",
+    "Thumbprint": "A1B2C3D4E5F6",
+    "NotBefore": "2024-01-01",
+    "NotAfter": "2026-05-01",
+    "DaysUntilExpiry": -30,
+    "Store": "My"
+  },
+  {
+    "Server": "localhost",
+    "Subject": "CN=demo-web.example.invalid",
+    "Issuer": "CN=Demo Enterprise CA",
+    "Thumbprint": "F6E5D4C3B2A1",
+    "NotBefore": "2025-01-01",
+    "NotAfter": "2026-07-01",
+    "DaysUntilExpiry": 28,
+    "Store": "My"
+  }
+]

@@ -1,0 +1,12 @@
+﻿[
+  {
+    "server": "localhost",
+    "dsnName": "DataHistoryDsn",
+    "driverName": "SQL Server Native Client",
+    "type": "System",
+    "architecture": "64-bit",
+    "serverTarget": "SQL01",
+    "database": "DataHistory",
+    "connectionPassed": false
+  }
+]

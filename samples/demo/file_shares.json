@@ -1,0 +1,18 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Name": "DemoShare",
+    "Path": "\\\\localhost\\DemoShare",
+    "Reachable": true,
+    "Error": null,
+    "CheckedAt": "2026-06-03T12:00:00"
+  },
+  {
+    "Server": "localhost",
+    "Name": "DataArchive",
+    "Path": "\\\\storage01\\data$",
+    "Reachable": false,
+    "Error": "Network path not found",
+    "CheckedAt": "2026-06-03T12:00:00"
+  }
+]

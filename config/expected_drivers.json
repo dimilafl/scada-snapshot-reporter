@@ -1,0 +1,11 @@
+﻿{
+  "drivers": [
+    {
+      "server": "localhost",
+      "type": "ODBC",
+      "name": "SQL Server",
+      "architecture": "",
+      "expected_version": ""
+    }
+  ]
+}

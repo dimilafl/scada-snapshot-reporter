@@ -1,0 +1,12 @@
+﻿[
+  {
+    "server": "localhost",
+    "subject": "CN=OT Expiring Test",
+    "issuer": "CN=OT Test CA",
+    "thumbprint": "00112233445566778899AABBCCDDEEFF00112233",
+    "notBefore": "2026-01-01T00:00:00",
+    "notAfter": "2026-06-20T00:00:00",
+    "daysUntilExpiry": 17,
+    "store": "Cert:\\LocalMachine\\My"
+  }
+]

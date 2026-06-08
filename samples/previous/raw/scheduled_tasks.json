@@ -1,0 +1,14 @@
+﻿[
+  {
+    "server": "localhost",
+    "taskPath": "\\DEMO\\",
+    "taskName": "NightlyExport",
+    "enabled": true,
+    "state": "Ready",
+    "lastRunTime": "2026-06-02T02:00:00",
+    "lastTaskResult": 0,
+    "nextRunTime": "2026-06-04T02:00:00",
+    "runAs": "DOMAIN\\collector-old",
+    "action": "C:\\Scripts\\Export.ps1"
+  }
+]

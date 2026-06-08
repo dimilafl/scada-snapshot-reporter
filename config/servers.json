@@ -1,0 +1,8 @@
+﻿{
+  "servers": [
+    {
+      "name": "localhost",
+      "roles": [ "snapshot-host" ]
+    }
+  ]
+}

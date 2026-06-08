@@ -1,0 +1,11 @@
+﻿[
+  {
+    "server": "localhost",
+    "type": "ODBC",
+    "name": "SQL Server Native Client",
+    "version": "11.0",
+    "architecture": "64-bit",
+    "installPath": "C:\\Windows\\System32\\sqlncli11.dll",
+    "lastModified": "2026-06-02T08:00:00"
+  }
+]

@@ -1,0 +1,22 @@
+﻿[
+  {
+    "server": "localhost",
+    "logName": "System",
+    "source": "Service Control Manager",
+    "level": 2,
+    "count": 12,
+    "newestTime": "2026-06-03T10:00:00",
+    "newestEventId": 7031,
+    "windowHours": 24
+  },
+  {
+    "server": "localhost",
+    "logName": "Application",
+    "source": "Application Error",
+    "level": 1,
+    "count": 1,
+    "newestTime": "2026-06-03T11:00:00",
+    "newestEventId": 1000,
+    "windowHours": 24
+  }
+]

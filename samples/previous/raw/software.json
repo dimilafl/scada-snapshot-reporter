@@ -1,0 +1,9 @@
+﻿[
+  {
+    "server": "localhost",
+    "name": "Vendor Client",
+    "version": "1.0.0",
+    "publisher": "Vendor",
+    "installLocation": "C:\\Vendor"
+  }
+]

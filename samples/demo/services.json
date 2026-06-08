@@ -1,0 +1,18 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Name": "EventLog",
+    "DisplayName": "Windows Event Log",
+    "Status": "Running",
+    "StartupType": "Automatic",
+    "StartName": "LocalSystem"
+  },
+  {
+    "Server": "localhost",
+    "Name": "Spooler",
+    "DisplayName": "Print Spooler",
+    "Status": "Stopped",
+    "StartupType": "Manual",
+    "StartName": "LocalSystem"
+  }
+]

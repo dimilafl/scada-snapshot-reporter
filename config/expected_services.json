@@ -1,0 +1,11 @@
+﻿{
+  "services": [
+    {
+      "server": "localhost",
+      "name": "EventLog",
+      "expected_status": "Running",
+      "expected_startup_type": "Automatic",
+      "severity_if_stopped": "Critical"
+    }
+  ]
+}

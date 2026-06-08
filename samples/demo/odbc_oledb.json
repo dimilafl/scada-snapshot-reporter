@@ -1,0 +1,29 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Type": "ODBC",
+    "Name": "SQL Server",
+    "Version": "10.00.19041",
+    "Architecture": "64-bit",
+    "InstallPath": "C:\\Windows\\System32\\SQLSRV32.dll",
+    "LastModified": "2024-01-15"
+  },
+  {
+    "Server": "localhost",
+    "Type": "ODBC",
+    "Name": "Demo Historian Driver",
+    "Version": "2.1.0",
+    "Architecture": "64-bit",
+    "InstallPath": "C:\\Program Files\\DemoHistorian\\ODBC\\piDrv32.dll",
+    "LastModified": "2023-11-20"
+  },
+  {
+    "Server": "localhost",
+    "Type": "OLE DB",
+    "Name": "Microsoft.ACE.OLEDB.16.0",
+    "Version": "16.0",
+    "Architecture": "64-bit",
+    "InstallPath": "C:\\Program Files\\Microsoft Office\\Office16\\ACEOLEDB.DLL",
+    "LastModified": "2024-03-01"
+  }
+]

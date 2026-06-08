@@ -1,0 +1,13 @@
+﻿[
+  {
+    "server": "localhost",
+    "name": "NightlyExport",
+    "path": "\\\\fileserver\\exports\\nightly",
+    "maxAgeHours": 24,
+    "exists": true,
+    "newestFile": "\\\\fileserver\\exports\\nightly\\export-20260602.zip",
+    "newestWriteTime": "2026-06-02T02:00:00",
+    "ageHours": 10.0,
+    "error": null
+  }
+]

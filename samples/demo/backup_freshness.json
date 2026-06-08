@@ -1,0 +1,35 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Name": "NightlyExport",
+    "Path": "C:\\Exports",
+    "MaxAgeHours": 24,
+    "Exists": true,
+    "NewestFile": "C:\\Exports\\export_20260603.csv",
+    "NewestWriteTime": "2026-06-03T02:05:00",
+    "AgeHours": 10,
+    "Error": null
+  },
+  {
+    "Server": "localhost",
+    "Name": "WeeklyBackup",
+    "Path": "D:\\Backups",
+    "MaxAgeHours": 168,
+    "Exists": true,
+    "NewestFile": "D:\\Backups\\full_20260520.bak",
+    "NewestWriteTime": "2026-05-20T01:00:00",
+    "AgeHours": 340,
+    "Error": null
+  },
+  {
+    "Server": "localhost",
+    "Name": "ConfigExport",
+    "Path": "E:\\ConfigExports",
+    "MaxAgeHours": 48,
+    "Exists": false,
+    "NewestFile": null,
+    "NewestWriteTime": null,
+    "AgeHours": null,
+    "Error": "Path not found"
+  }
+]

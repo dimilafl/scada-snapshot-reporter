@@ -1,0 +1,9 @@
+﻿{
+  "paths": [
+    {
+      "name": "Windows Logs",
+      "path": "C:\\Windows\\Logs",
+      "max_age_hours": 168
+    }
+  ]
+}

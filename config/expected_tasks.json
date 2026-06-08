@@ -1,0 +1,10 @@
+﻿{
+  "tasks": [
+    {
+      "server": "localhost",
+      "task_path": "\\Microsoft\\Windows\\Time Synchronization\\",
+      "task_name": "SynchronizeTime",
+      "expected_enabled": true
+    }
+  ]
+}

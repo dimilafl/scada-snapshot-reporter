@@ -1,0 +1,15 @@
+﻿{
+  "logs": [
+    {
+      "name": "Application",
+      "include_warnings": false,
+      "max_events": 500
+    },
+    {
+      "name": "System",
+      "include_warnings": false,
+      "max_events": 500
+    }
+  ],
+  "window_hours": 24
+}

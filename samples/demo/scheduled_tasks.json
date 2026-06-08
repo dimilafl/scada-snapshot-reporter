@@ -1,0 +1,26 @@
+﻿[
+  {
+    "Server": "localhost",
+    "TaskPath": "\\Microsoft\\Windows\\Time Synchronization\\",
+    "TaskName": "SynchronizeTime",
+    "Enabled": true,
+    "State": "Ready",
+    "LastRunTime": "2026-06-03T06:00:00",
+    "LastTaskResult": 0,
+    "NextRunTime": "2026-06-04T06:00:00",
+    "RunAs": "LocalSystem",
+    "Action": "w32tm.exe /resync"
+  },
+  {
+    "Server": "localhost",
+    "TaskPath": "\\DEMO\\",
+    "TaskName": "NightlyExport",
+    "Enabled": false,
+    "State": "Disabled",
+    "LastRunTime": "2026-05-30T02:00:00",
+    "LastTaskResult": 1,
+    "NextRunTime": null,
+    "RunAs": "DEMO\\collector-export",
+    "Action": "powershell.exe -File C:\\DemoOT\\Export.ps1"
+  }
+]

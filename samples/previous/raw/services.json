@@ -1,0 +1,10 @@
+﻿[
+  {
+    "server": "localhost",
+    "name": "EventLog",
+    "displayName": "Windows Event Log",
+    "status": "Running",
+    "startupType": "Automatic",
+    "startName": "LocalSystem"
+  }
+]

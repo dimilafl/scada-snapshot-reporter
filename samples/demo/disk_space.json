@@ -1,0 +1,16 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Drive": "C:",
+    "TotalGb": 250.0,
+    "FreeGb": 18.0,
+    "FreePercent": 7.2
+  },
+  {
+    "Server": "localhost",
+    "Drive": "D:",
+    "TotalGb": 500.0,
+    "FreeGb": 60.0,
+    "FreePercent": 12.0
+  }
+]

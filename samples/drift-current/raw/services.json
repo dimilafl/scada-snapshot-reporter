@@ -1,0 +1,18 @@
+﻿[
+  {
+    "server": "localhost",
+    "name": "EventLog",
+    "displayName": "Windows Event Log",
+    "status": "Stopped",
+    "startupType": "Manual",
+    "startName": "LocalSystem"
+  },
+  {
+    "server": "localhost",
+    "name": "NewService",
+    "displayName": "New Service",
+    "status": "Running",
+    "startupType": "Automatic",
+    "startName": "LocalSystem"
+  }
+]

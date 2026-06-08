@@ -1,0 +1,8 @@
+﻿{
+  "disk_free_percent_warning": 15,
+  "disk_free_percent_critical": 10,
+  "task_not_run_hours_warning": 24,
+  "reboot_detection_enabled": true,
+  "disk_drop_percent_warning": 10,
+  "snapshot_retention_days": 90
+}

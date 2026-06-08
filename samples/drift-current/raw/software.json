@@ -1,0 +1,16 @@
+﻿[
+  {
+    "server": "localhost",
+    "name": "Vendor Client",
+    "version": "1.1.0",
+    "publisher": "Vendor",
+    "installLocation": "C:\\Vendor"
+  },
+  {
+    "server": "localhost",
+    "name": "New Utility",
+    "version": "2.0.0",
+    "publisher": "Tools",
+    "installLocation": "C:\\Tools"
+  }
+]

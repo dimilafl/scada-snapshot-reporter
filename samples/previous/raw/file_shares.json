@@ -1,0 +1,10 @@
+﻿[
+  {
+    "server": "localhost",
+    "name": "DataHistoryShare",
+    "path": "\\\\fileserver\\historian",
+    "reachable": true,
+    "error": null,
+    "checkedAt": "2026-06-02T11:30:00"
+  }
+]

@@ -1,0 +1,16 @@
+﻿[
+  {
+    "Server": "localhost",
+    "Name": "Microsoft .NET DemoDB",
+    "Version": "7.0.5",
+    "Publisher": "Microsoft",
+    "InstallLocation": "C:\\Program Files\\dotnet"
+  },
+  {
+    "Server": "localhost",
+    "Name": "industrial SCADA/OT Console",
+    "Version": "4.2.1.100",
+    "Publisher": "OT",
+    "InstallLocation": "C:\\Program Files\\DEMO\\Console"
+  }
+]

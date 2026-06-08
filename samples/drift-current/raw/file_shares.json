@@ -1,0 +1,10 @@
+﻿[
+  {
+    "server": "localhost",
+    "name": "DataHistoryShare",
+    "path": "\\\\fileserver\\historian",
+    "reachable": false,
+    "error": "The network path was not found.",
+    "checkedAt": "2026-06-03T11:30:00"
+  }
+]
