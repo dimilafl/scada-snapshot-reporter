@@ -8,7 +8,7 @@ function Get-ConfiguredServers {
     )
 
     if (-not [string]::IsNullOrWhiteSpace($env:OT_SNAPSHOT_TARGET_SERVER)) {
-        return @($env:OT_SNAPSHOT_TARGET_SERVER)
+        return @($env:OT_SNAPSHOT_TARGET_SERVER.Trim())
     }
 
     $serversFile = Join-Path $ConfigPath 'servers.json'
@@ -17,11 +17,32 @@ function Get-ConfiguredServers {
     }
 
     $content = Get-Content -Path $serversFile -Raw | ConvertFrom-Json
-    if ($null -eq $content.servers -or $content.servers.Count -eq 0) {
+    $entries = @()
+    if ($null -ne $content.servers) {
+        $entries = @($content.servers)
+    }
+    if ($entries.Count -eq 0) {
         return @($env:COMPUTERNAME)
     }
 
-    return @($content.servers | ForEach-Object { $_.name })
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $servers = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $entries) {
+        $name = ''
+        if ($null -ne $entry -and $null -ne $entry.PSObject.Properties['name']) {
+            $name = [string]$entry.name
+        }
+        $name = $name.Trim()
+        if ($name.Length -gt 0 -and $seen.Add($name)) {
+            $servers.Add($name)
+        }
+    }
+
+    if ($servers.Count -eq 0) {
+        return @($env:COMPUTERNAME)
+    }
+
+    return @($servers.ToArray())
 }
 
 function Ensure-Directory {

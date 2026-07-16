@@ -195,6 +195,39 @@ Test-Case "Collector JSON output is atomic and valid" {
     }
 }
 
+Test-Case "Collector helper normalizes configured servers" {
+    $serverConfig = Join-Path $OutputRoot 'server-normalization-config'
+    New-Item -ItemType Directory -Path $serverConfig -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $serverConfig 'servers.json') -Value '{"servers":[{"name":" server-a "},{"name":"SERVER-A"},{"name":"server-b"},{"name":""},null]}' -Encoding UTF8
+    $emptyConfig = Join-Path $OutputRoot 'empty-server-config'
+    New-Item -ItemType Directory -Path $emptyConfig -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $emptyConfig 'servers.json') -Value '{"servers":"localhost"}' -Encoding UTF8
+
+    $hadOverride = Test-Path Env:OT_SNAPSHOT_TARGET_SERVER
+    $previousOverride = $env:OT_SNAPSHOT_TARGET_SERVER
+    try {
+        Remove-Item Env:OT_SNAPSHOT_TARGET_SERVER -ErrorAction SilentlyContinue
+        . .\collectors\CollectorHelpers.ps1
+        $servers = @(Get-ConfiguredServers -ConfigPath $serverConfig)
+        $fallbackServers = @(Get-ConfiguredServers -ConfigPath $emptyConfig)
+    }
+    finally {
+        if ($hadOverride) {
+            $env:OT_SNAPSHOT_TARGET_SERVER = $previousOverride
+        }
+        else {
+            Remove-Item Env:OT_SNAPSHOT_TARGET_SERVER -ErrorAction SilentlyContinue
+        }
+    }
+
+    if ($servers.Count -ne 2 -or $servers[0] -ne 'server-a' -or $servers[1] -ne 'server-b') {
+        throw "Configured server normalization returned unexpected entries: $($servers -join ', ')"
+    }
+    if ($fallbackServers.Count -ne 1 -or $fallbackServers[0] -ne $env:COMPUTERNAME) {
+        throw "Empty configured server entries did not fall back to the local computer"
+    }
+}
+
 Test-Case "Scheduled wrapper reuses six-digit report folders" {
     $scheduledRoot = Join-Path (Resolve-Path $OutputRoot).Path 'scheduled-wrapper'
     $scheduledCollectors = Join-Path $scheduledRoot 'collectors'
