@@ -273,6 +273,12 @@ internal sealed class MainForm : Form
         {
             SaveSettingsFromUi();
             SaveServers();
+            var previousReport = LatestReportFolder();
+            if (previousReport is not null)
+            {
+                AppendLine($"Using previous report for drift: {previousReport}");
+            }
+
             SetStatus("Running collectors...");
             var inputPath = NewCollectionPath();
             Directory.CreateDirectory(inputPath);
@@ -288,7 +294,7 @@ internal sealed class MainForm : Form
                 inputPath
             ]);
             SetStatus("Generating report...");
-            await RunProcessAsync(EngineHost(), EngineArgs(inputPath));
+            await RunProcessAsync(EngineHost(), EngineArgs(inputPath, previousReport));
             var latest = LatestReportFolder();
             if (latest is null)
             {
@@ -445,7 +451,7 @@ internal sealed class MainForm : Form
         }
     }
 
-    private IEnumerable<string> EngineArgs(string inputPath)
+    private IEnumerable<string> EngineArgs(string inputPath, string? previousPath)
     {
         if (_engineExe.Text.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
         {
@@ -458,6 +464,12 @@ internal sealed class MainForm : Form
         yield return _configPath.Text;
         yield return "--output";
         yield return _outputRoot.Text;
+
+        if (!string.IsNullOrWhiteSpace(previousPath))
+        {
+            yield return "--previous";
+            yield return previousPath;
+        }
     }
 
     private string? LatestReportFolder()

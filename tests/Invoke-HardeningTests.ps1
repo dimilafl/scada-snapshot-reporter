@@ -82,6 +82,13 @@ Test-Case "Unit tests pass" {
     if ($LASTEXITCODE -ne 0) { throw "Unit tests failed" }
 }
 
+Test-Case "GUI passes the latest report to drift comparison" {
+    $mainForm = Get-Content .\src\OtSnapshotGui\MainForm.cs -Raw
+    Assert-Contains $mainForm 'var previousReport = LatestReportFolder();'
+    Assert-Contains $mainForm 'EngineArgs(inputPath, previousReport)'
+    Assert-Contains $mainForm 'yield return "--previous";'
+}
+
 Test-Case "Smoke tests pass" {
     .\tests\Invoke-SmokeTests.ps1 | Out-Null
 }
