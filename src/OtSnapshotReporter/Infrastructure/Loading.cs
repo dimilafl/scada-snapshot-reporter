@@ -94,7 +94,7 @@ public static class Loading
             return single;
         }
 
-        if (Directory.Exists(inputPath) && Directory.GetFiles(inputPath, "*.json").Length > 0)
+        if (Directory.Exists(inputPath) && GetFilesSafely(inputPath, "*.json", "JSON input files").Length > 0)
         {
             return inputPath;
         }
@@ -121,7 +121,7 @@ public static class Loading
 
         Directory.CreateDirectory(mergedDir);
         var groupedFiles = serverRawFolders
-            .SelectMany(raw => Directory.GetFiles(raw, "*.json"))
+            .SelectMany(raw => GetFilesSafely(raw, "*.json", "raw input files"))
             .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
         var mergedErrorItems = new List<JsonElement>();
 
@@ -190,9 +190,16 @@ public static class Loading
             return;
         }
 
-        foreach (var file in Directory.GetFiles(source, "*.json"))
+        foreach (var file in GetFilesSafely(source, "*.json", "raw input files"))
         {
-            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
+            try
+            {
+                File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine($"Warning: Cannot copy {file}: {ex.Message}");
+            }
         }
     }
 
@@ -205,7 +212,7 @@ public static class Loading
 
         var raw = Path.Combine(path, "raw");
         string? temporaryMergeRoot = null;
-        if (!Directory.Exists(raw) && Directory.Exists(path) && Directory.GetFiles(path, "*.json").Length > 0)
+        if (!Directory.Exists(raw) && Directory.Exists(path) && GetFilesSafely(path, "*.json", "previous snapshot files").Length > 0)
         {
             raw = path;
         }
@@ -248,7 +255,7 @@ public static class Loading
             return [];
         }
 
-        return Directory.GetDirectories(inputPath)
+        return GetDirectoriesSafely(inputPath, "per-server folders")
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .Select(FindLatestRawFolder)
             .Where(path => path is not null)
@@ -269,19 +276,7 @@ public static class Loading
             return direct;
         }
 
-        string[] timestampFolders;
-        try
-        {
-            timestampFolders = Directory.GetDirectories(serverPath);
-        }
-        catch (IOException)
-        {
-            return null;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return null;
-        }
+        var timestampFolders = GetDirectoriesSafely(serverPath, "timestamp folders");
 
         return timestampFolders
             .Select(folder => new
@@ -355,6 +350,32 @@ public static class Loading
         }
 
         return string.IsNullOrWhiteSpace(serverFolder?.Name) ? "unknown" : serverFolder.Name;
+    }
+
+    private static string[] GetFilesSafely(string path, string searchPattern, string description)
+    {
+        try
+        {
+            return Directory.GetFiles(path, searchPattern);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Warning: Cannot enumerate {description} in {path}: {ex.Message}");
+            return [];
+        }
+    }
+
+    private static string[] GetDirectoriesSafely(string path, string description)
+    {
+        try
+        {
+            return Directory.GetDirectories(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Warning: Cannot enumerate {description} in {path}: {ex.Message}");
+            return [];
+        }
     }
 
     public static List<ModuleDescriptor> GetModuleDescriptors() =>

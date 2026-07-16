@@ -80,6 +80,37 @@ public sealed class LoadingTests
     }
 
     [Fact]
+    public void CopyRawInputs_ContinuesWhenOneFileIsLocked()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-copy-test-" + Guid.NewGuid());
+        FileStream? blocker = null;
+        try
+        {
+            var source = Path.Combine(root, "source");
+            var destination = Path.Combine(root, "destination");
+            Directory.CreateDirectory(source);
+            Directory.CreateDirectory(destination);
+            File.WriteAllText(Path.Combine(source, "usable.json"), "[]");
+            var lockedPath = Path.Combine(source, "locked.json");
+            File.WriteAllText(lockedPath, "[]");
+            blocker = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+            Loading.CopyRawInputs(source, destination);
+
+            Assert.True(File.Exists(Path.Combine(destination, "usable.json")));
+            Assert.False(File.Exists(Path.Combine(destination, "locked.json")));
+        }
+        finally
+        {
+            blocker?.Dispose();
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void ResolveRawRoot_EmptyDirectory_ReturnsDefaultRawPath()
     {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
