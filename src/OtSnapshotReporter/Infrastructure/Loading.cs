@@ -22,7 +22,7 @@ public static class Loading
             Console.Error.WriteLine($"Warning: Failed to parse {path}: {ex.Message}");
             return default;
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine($"Warning: Cannot read {path}: {ex.Message}");
             return default;
@@ -79,7 +79,7 @@ public static class Loading
             Console.Error.WriteLine($"Warning: Failed to parse {path}: {ex.Message}");
             return [];
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine($"Warning: Cannot read {path}: {ex.Message}");
             return [];
@@ -147,7 +147,7 @@ public static class Loading
                         run = DateTime.Now.ToString("s")
                     }));
                 }
-                catch (IOException ex)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
                     Console.Error.WriteLine($"Warning: Cannot merge {file}: {ex.Message}");
                     mergedErrorItems.Add(JsonSerializer.SerializeToElement(new

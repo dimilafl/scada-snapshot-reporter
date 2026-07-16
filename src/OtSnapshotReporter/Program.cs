@@ -140,10 +140,19 @@ catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or A
     return 1;
 }
 
-var reportRoot = Writing.CreateAvailableReportRoot(options.OutputPath, DateTime.Now);
-var rawOutput = Path.Combine(reportRoot, "raw");
-
-Directory.CreateDirectory(rawOutput);
+string reportRoot;
+string rawOutput;
+try
+{
+    reportRoot = Writing.CreateAvailableReportRoot(options.OutputPath, DateTime.Now);
+    rawOutput = Path.Combine(reportRoot, "raw");
+    Directory.CreateDirectory(rawOutput);
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+{
+    Console.Error.WriteLine($"Error: Cannot prepare report folder under {options.OutputPath}. {ex.Message}");
+    return 1;
+}
 
 var rawRoot = Loading.ResolveRawRoot(options.InputPath, options.OutputPath);
 Loading.CopyRawInputs(rawRoot, rawOutput);
