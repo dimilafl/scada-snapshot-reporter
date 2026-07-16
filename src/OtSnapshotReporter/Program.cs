@@ -25,6 +25,12 @@ if (options.HelpRequested)
     return 0;
 }
 
+if (!Directory.Exists(options.InputPath))
+{
+    Console.Error.WriteLine($"Error: Input path does not exist: {options.InputPath}");
+    return 1;
+}
+
 var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
 var reportRoot = Path.Combine(options.OutputPath, runStamp);
 var rawOutput = Path.Combine(reportRoot, "raw");

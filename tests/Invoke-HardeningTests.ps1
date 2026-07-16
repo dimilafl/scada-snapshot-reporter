@@ -373,6 +373,25 @@ Test-Case "Engine handles empty input directory" {
     Assert-Contains $html 'No issues found'
 }
 
+Test-Case "Engine rejects a missing input path" {
+    $missingInput = Join-Path $OutputRoot 'missing-input-path'
+    $missingReport = Join-Path $OutputRoot 'missing-input-report'
+    if (Test-Path $missingInput) { Remove-Item -LiteralPath $missingInput -Recurse -Force }
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input $missingInput --config .\config --output $missingReport 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected missing input to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Input path does not exist') { throw "Expected missing input error" }
+}
+
 Test-Case "Engine handles all raw JSON files missing" {
     $missingRawInput = Join-Path $OutputRoot 'missing-raw-input'
     $missingRawReport = Join-Path $OutputRoot 'missing-raw-report'
