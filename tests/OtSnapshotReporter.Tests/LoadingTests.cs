@@ -61,6 +61,25 @@ public sealed class LoadingTests
     }
 
     [Fact]
+    public void LoadRecords_KeepsValidRowsWhenOneRowHasInvalidField()
+    {
+        var path = Path.GetTempFileName();
+        File.WriteAllText(
+            path,
+            "[{\"Server\":\"SRV01\",\"Drive\":\"C:\",\"TotalGb\":100,\"FreeGb\":50,\"FreePercent\":50},{\"Server\":\"SRV01\",\"Drive\":\"D:\",\"TotalGb\":200,\"FreeGb\":\"not-a-number\",\"FreePercent\":20}]");
+
+        var result = Loading.LoadRecords<DiskRecord>(
+            path,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true },
+            record => !string.IsNullOrWhiteSpace(record.Server) && !string.IsNullOrWhiteSpace(record.Drive),
+            "disk");
+
+        File.Delete(path);
+        var record = Assert.Single(result);
+        Assert.Equal("C:", record.Drive);
+    }
+
+    [Fact]
     public void ResolveRawRoot_EmptyDirectory_ReturnsDefaultRawPath()
     {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());

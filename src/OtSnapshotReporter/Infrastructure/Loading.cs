@@ -31,15 +31,59 @@ public static class Loading
 
     public static List<T> LoadRecords<T>(string path, JsonSerializerOptions options, Func<T, bool> isValid, string recordType) where T : class
     {
-        var records = LoadJson<List<T>>(path, options) ?? [];
-        var valid = records.Where(record => record is not null).Where(isValid).ToList();
-        var ignored = records.Count - valid.Count;
-        if (ignored > 0)
+        if (!File.Exists(path))
         {
-            Console.Error.WriteLine($"Warning: Ignored {ignored} invalid {recordType} record(s) in {path}.");
+            return [];
         }
 
-        return valid;
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                Console.Error.WriteLine($"Warning: Expected an array of {recordType} records in {path}.");
+                return [];
+            }
+
+            var valid = new List<T>();
+            var ignored = 0;
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                try
+                {
+                    var record = element.Deserialize<T>(options);
+                    if (record is not null && isValid(record))
+                    {
+                        valid.Add(record);
+                    }
+                    else
+                    {
+                        ignored++;
+                    }
+                }
+                catch (JsonException)
+                {
+                    ignored++;
+                }
+            }
+
+            if (ignored > 0)
+            {
+                Console.Error.WriteLine($"Warning: Ignored {ignored} invalid {recordType} record(s) in {path}.");
+            }
+
+            return valid;
+        }
+        catch (JsonException ex)
+        {
+            Console.Error.WriteLine($"Warning: Failed to parse {path}: {ex.Message}");
+            return [];
+        }
+        catch (IOException ex)
+        {
+            Console.Error.WriteLine($"Warning: Cannot read {path}: {ex.Message}");
+            return [];
+        }
     }
 
     public static string ResolveRawRoot(string inputPath, string outputPath)

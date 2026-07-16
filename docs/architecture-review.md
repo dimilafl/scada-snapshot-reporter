@@ -81,7 +81,7 @@ Recommendation: Either convention-based discovery (`Get-ChildItem Collect-*.ps1 
 
 ### 7. No JSON schema validation between collectors and engine
 
-**Status: Partially resolved.** Server coverage is checked against `config/servers.json`, and `Loading.LoadRecords` rejects rows missing required identity fields with an explicit warning. Full field-level schema/version validation remains future design debt.
+**Status: Partially resolved.** Server coverage is checked against `config/servers.json`, and `Loading.LoadRecords` deserializes records individually, rejects rows with conversion or required-identity failures, and reports the ignored count. Full field-level schema/version validation remains future design debt.
 
 The collector-to-engine contract is the implicit field names in `[pscustomobject]`. `PropertyNameCaseInsensitive = true` means typos in field names (`server` vs `Server`) are silently accepted but `displayName` renamed to `DisplayName` produces empty cells in HTML. No validation step exists.
 
