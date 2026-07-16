@@ -198,44 +198,87 @@ internal sealed class MainForm : Form
         var path = ServersPath();
         var tmpPath = path + ".tmp";
         var json = new JsonObject { ["servers"] = servers }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(tmpPath, json);
         try
         {
+            File.WriteAllText(tmpPath, json);
             JsonNode.Parse(File.ReadAllText(tmpPath));
+            File.Move(tmpPath, path, overwrite: true);
         }
         catch
         {
-            File.Delete(tmpPath);
+            try
+            {
+                File.Delete(tmpPath);
+            }
+            catch
+            {
+                // Preserve the original save failure; the temporary file can be retried later.
+            }
+
             throw;
         }
-        File.Move(tmpPath, path, overwrite: true);
     }
 
     private void AddServer()
     {
         var name = _serverInput.Text.Trim();
         if (name.Length == 0 || _servers.Items.Contains(name)) return;
+
+        var previousInvalidState = _serversFileInvalid;
+        var insertedIndex = _servers.Items.Count;
         _servers.Items.Add(name);
-        _serverInput.Clear();
         _serversFileInvalid = false;
-        SaveServers();
+        if (!TrySaveServers())
+        {
+            _servers.Items.RemoveAt(insertedIndex);
+            _serversFileInvalid = previousInvalidState;
+            return;
+        }
+
+        _serverInput.Clear();
     }
 
     private void RemoveServer()
     {
-        var removed = false;
-        while (_servers.SelectedItems.Count > 0)
+        var selected = _servers.SelectedIndices
+            .Cast<int>()
+            .OrderBy(index => index)
+            .Select(index => (Index: index, Value: _servers.Items[index]))
+            .ToArray();
+        if (selected.Length == 0) return;
+
+        var previousInvalidState = _serversFileInvalid;
+        foreach (var entry in selected.OrderByDescending(entry => entry.Index))
         {
-            var selected = _servers.SelectedItems[0];
-            if (selected is not null)
-            {
-                _servers.Items.Remove(selected);
-                removed = true;
-            }
+            _servers.Items.RemoveAt(entry.Index);
         }
-        if (!removed) return;
         _serversFileInvalid = false;
-        SaveServers();
+        if (TrySaveServers()) return;
+
+        foreach (var entry in selected)
+        {
+            _servers.Items.Insert(entry.Index, entry.Value);
+        }
+
+        _serversFileInvalid = previousInvalidState;
+        foreach (var entry in selected)
+        {
+            _servers.SetSelected(entry.Index, true);
+        }
+    }
+
+    private bool TrySaveServers()
+    {
+        try
+        {
+            SaveServers();
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            MessageBox.Show($"Could not save servers.json: {ex.Message}", "Servers", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
+        }
     }
 
     private async Task CollectAndReportAsync()
