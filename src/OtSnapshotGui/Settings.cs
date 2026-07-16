@@ -33,9 +33,9 @@ internal sealed class GuiSettings
     public void Save()
     {
         var tempPath = SettingsPath + ".tmp";
-        File.WriteAllText(tempPath, JsonSerializer.Serialize(this, JsonOptions()));
         try
         {
+            File.WriteAllText(tempPath, JsonSerializer.Serialize(this, JsonOptions()));
             using var document = JsonDocument.Parse(File.ReadAllText(tempPath));
             File.Move(tempPath, SettingsPath, overwrite: true);
         }
