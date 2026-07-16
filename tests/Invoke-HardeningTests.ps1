@@ -401,6 +401,32 @@ Test-Case "Engine handles corrupt JSON and continues" {
     Get-LatestReport $corruptReport | Out-Null
 }
 
+Test-Case "Engine filters malformed records and continues" {
+    $malformedInput = Join-Path $OutputRoot 'malformed-input'
+    $malformedReport = Join-Path $OutputRoot 'malformed-report'
+    New-Item -ItemType Directory -Path (Join-Path $malformedInput 'raw') -Force | Out-Null
+    Copy-Item -Path .\samples\demo\* -Destination (Join-Path $malformedInput 'raw') -Recurse -Force
+    $services = New-Object System.Collections.Generic.List[object]
+    foreach ($service in (Get-Content (Join-Path $malformedInput 'raw\services.json') -Raw | ConvertFrom-Json)) {
+        $services.Add($service)
+    }
+    $services.Add([pscustomobject]@{ server = 'localhost'; name = ''; displayName = ''; status = ''; startupType = ''; startName = '' })
+    $services | ConvertTo-Json | Set-Content -Path (Join-Path $malformedInput 'raw\services.json') -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input $malformedInput --config .\config --output $malformedReport 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Engine failed for malformed records" }
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if (($output -join "`n") -notmatch 'Ignored 1 invalid service record') { throw "Expected malformed service warning" }
+    Get-LatestReport $malformedReport | Out-Null
+}
+
 Test-Case "Engine handles missing expected configs" {
     $configDir = Join-Path $OutputRoot 'minimal-config'
     $reportDir = Join-Path $OutputRoot 'minimal-config-report'

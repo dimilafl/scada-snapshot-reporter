@@ -28,6 +28,19 @@ public static class Loading
         }
     }
 
+    public static List<T> LoadRecords<T>(string path, JsonSerializerOptions options, Func<T, bool> isValid, string recordType) where T : class
+    {
+        var records = LoadJson<List<T>>(path, options) ?? [];
+        var valid = records.Where(record => record is not null).Where(isValid).ToList();
+        var ignored = records.Count - valid.Count;
+        if (ignored > 0)
+        {
+            Console.Error.WriteLine($"Warning: Ignored {ignored} invalid {recordType} record(s) in {path}.");
+        }
+
+        return valid;
+    }
+
     public static string ResolveRawRoot(string inputPath, string outputPath)
     {
         var single = Path.Combine(inputPath, "raw");
@@ -163,15 +176,15 @@ public static class Loading
         try
         {
             return new PreviousSnapshot(
-                LoadJson<List<ServiceRecord>>(Path.Combine(raw, "services.json"), json) ?? [],
-                LoadJson<List<DiskRecord>>(Path.Combine(raw, "disk_space.json"), json) ?? [],
-                LoadJson<List<TaskRecord>>(Path.Combine(raw, "scheduled_tasks.json"), json) ?? [],
-                LoadJson<List<UptimeRecord>>(Path.Combine(raw, "uptime.json"), json) ?? [],
-                LoadJson<List<SoftwareRecord>>(Path.Combine(raw, "software.json"), json) ?? [],
-                LoadJson<List<DriverRecord>>(Path.Combine(raw, "odbc_oledb.json"), json) ?? [],
-                LoadJson<List<EventLogSummaryRecord>>(Path.Combine(raw, "event_log_summary.json"), json) ?? [],
-                LoadJson<List<FileShareRecord>>(Path.Combine(raw, "file_shares.json"), json) ?? [],
-                LoadJson<List<BackupFreshnessRecord>>(Path.Combine(raw, "backup_freshness.json"), json) ?? []);
+                LoadRecords<ServiceRecord>(Path.Combine(raw, "services.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name), "previous service"),
+                LoadRecords<DiskRecord>(Path.Combine(raw, "disk_space.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Drive), "previous disk"),
+                LoadRecords<TaskRecord>(Path.Combine(raw, "scheduled_tasks.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.TaskName), "previous scheduled task"),
+                LoadRecords<UptimeRecord>(Path.Combine(raw, "uptime.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.LastBootTime), "previous uptime"),
+                LoadRecords<SoftwareRecord>(Path.Combine(raw, "software.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name), "previous software"),
+                LoadRecords<DriverRecord>(Path.Combine(raw, "odbc_oledb.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Type) && !string.IsNullOrWhiteSpace(x.Name) && !string.IsNullOrWhiteSpace(x.Architecture), "previous driver"),
+                LoadRecords<EventLogSummaryRecord>(Path.Combine(raw, "event_log_summary.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.LogName) && !string.IsNullOrWhiteSpace(x.Source), "previous event log"),
+                LoadRecords<FileShareRecord>(Path.Combine(raw, "file_shares.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "previous file-share"),
+                LoadRecords<BackupFreshnessRecord>(Path.Combine(raw, "backup_freshness.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "previous backup"));
         }
         finally
         {

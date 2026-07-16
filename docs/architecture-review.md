@@ -81,11 +81,11 @@ Recommendation: Either convention-based discovery (`Get-ChildItem Collect-*.ps1 
 
 ### 7. No JSON schema validation between collectors and engine
 
-**Status: Open.** Server coverage is now checked against `config/servers.json`, but field-level schema validation remains future design debt.
+**Status: Partially resolved.** Server coverage is checked against `config/servers.json`, and `Loading.LoadRecords` rejects rows missing required identity fields with an explicit warning. Full field-level schema/version validation remains future design debt.
 
 The collector-to-engine contract is the implicit field names in `[pscustomobject]`. `PropertyNameCaseInsensitive = true` means typos in field names (`server` vs `Server`) are silently accepted but `displayName` renamed to `DisplayName` produces empty cells in HTML. No validation step exists.
 
-Recommendation: At minimum, smoke test asserts field presence on deserialized records. Ideally, embed a versioned schema hash per collector output.
+Recommendation: Extend the required-field predicates as contracts evolve; ideally, embed a versioned schema hash per collector output.
 
 ### 8. `Register-SnapshotTask.ps1` uses interactive user, not SYSTEM
 

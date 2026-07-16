@@ -44,6 +44,23 @@ public sealed class LoadingTests
     }
 
     [Fact]
+    public void LoadRecords_FiltersRowsThatFailTheRequiredFieldPredicate()
+    {
+        var path = Path.GetTempFileName();
+        File.WriteAllText(path, "[{\"Server\":\"SRV01\",\"Name\":\"EventLog\",\"DisplayName\":\"Event Log\",\"Status\":\"Running\",\"StartupType\":\"Automatic\",\"StartName\":\"LocalSystem\"},{\"Server\":\"SRV01\",\"Name\":\"\"}]");
+
+        var result = Loading.LoadRecords<ServiceRecord>(
+            path,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true },
+            record => !string.IsNullOrWhiteSpace(record.Server) && !string.IsNullOrWhiteSpace(record.Name),
+            "service");
+
+        File.Delete(path);
+        var record = Assert.Single(result);
+        Assert.Equal("EventLog", record.Name);
+    }
+
+    [Fact]
     public void ResolveRawRoot_EmptyDirectory_ReturnsDefaultRawPath()
     {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());

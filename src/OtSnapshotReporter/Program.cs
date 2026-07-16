@@ -50,20 +50,20 @@ var expectedSoftware = Loading.LoadJson<ExpectedSoftwareConfig>(Path.Combine(opt
 var expectedDrivers = Loading.LoadJson<ExpectedDriversConfig>(Path.Combine(options.ConfigPath, "expected_drivers.json"), json) ?? new ExpectedDriversConfig();
 var maintenanceWindows = Loading.LoadJson<MaintenanceWindowsConfig>(Path.Combine(options.ConfigPath, "maintenance_windows.json"), json) ?? new MaintenanceWindowsConfig();
 
-var services = (Loading.LoadJson<List<ServiceRecord>>(Path.Combine(rawRoot, "services.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name)).ToList();
-var disks = (Loading.LoadJson<List<DiskRecord>>(Path.Combine(rawRoot, "disk_space.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var tasks = (Loading.LoadJson<List<TaskRecord>>(Path.Combine(rawRoot, "scheduled_tasks.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.TaskName)).ToList();
-var uptimes = (Loading.LoadJson<List<UptimeRecord>>(Path.Combine(rawRoot, "uptime.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var software = (Loading.LoadJson<List<SoftwareRecord>>(Path.Combine(rawRoot, "software.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name)).ToList();
-var drivers = (Loading.LoadJson<List<DriverRecord>>(Path.Combine(rawRoot, "odbc_oledb.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name)).ToList();
-var eventLogs = (Loading.LoadJson<List<EventLogSummaryRecord>>(Path.Combine(rawRoot, "event_log_summary.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var fileShares = (Loading.LoadJson<List<FileShareRecord>>(Path.Combine(rawRoot, "file_shares.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var backups = (Loading.LoadJson<List<BackupFreshnessRecord>>(Path.Combine(rawRoot, "backup_freshness.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var odbcDsns = (Loading.LoadJson<List<OdbcDsnRecord>>(Path.Combine(rawRoot, "odbc_dsn_tests.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var certificates = (Loading.LoadJson<List<CertificateRecord>>(Path.Combine(rawRoot, "certificates.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var sqlAgentJobs = (Loading.LoadJson<List<SqlAgentJobRecord>>(Path.Combine(rawRoot, "sql_agent_jobs.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var ssrsSubscriptions = (Loading.LoadJson<List<SsrsSubscriptionRecord>>(Path.Combine(rawRoot, "ssrs_subscriptions.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
-var collectionErrors = (Loading.LoadJson<List<ErrorRecord>>(Path.Combine(rawRoot, "_errors.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
+var services = Loading.LoadRecords<ServiceRecord>(Path.Combine(rawRoot, "services.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name), "service");
+var disks = Loading.LoadRecords<DiskRecord>(Path.Combine(rawRoot, "disk_space.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Drive), "disk");
+var tasks = Loading.LoadRecords<TaskRecord>(Path.Combine(rawRoot, "scheduled_tasks.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.TaskName), "scheduled task");
+var uptimes = Loading.LoadRecords<UptimeRecord>(Path.Combine(rawRoot, "uptime.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.LastBootTime), "uptime");
+var software = Loading.LoadRecords<SoftwareRecord>(Path.Combine(rawRoot, "software.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name), "software");
+var drivers = Loading.LoadRecords<DriverRecord>(Path.Combine(rawRoot, "odbc_oledb.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Type) && !string.IsNullOrWhiteSpace(x.Name) && !string.IsNullOrWhiteSpace(x.Architecture), "driver");
+var eventLogs = Loading.LoadRecords<EventLogSummaryRecord>(Path.Combine(rawRoot, "event_log_summary.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.LogName) && !string.IsNullOrWhiteSpace(x.Source), "event log");
+var fileShares = Loading.LoadRecords<FileShareRecord>(Path.Combine(rawRoot, "file_shares.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "file-share");
+var backups = Loading.LoadRecords<BackupFreshnessRecord>(Path.Combine(rawRoot, "backup_freshness.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "backup");
+var odbcDsns = Loading.LoadRecords<OdbcDsnRecord>(Path.Combine(rawRoot, "odbc_dsn_tests.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.DsnName), "ODBC DSN");
+var certificates = Loading.LoadRecords<CertificateRecord>(Path.Combine(rawRoot, "certificates.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Subject), "certificate");
+var sqlAgentJobs = Loading.LoadRecords<SqlAgentJobRecord>(Path.Combine(rawRoot, "sql_agent_jobs.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.JobName), "SQL Agent job");
+var ssrsSubscriptions = Loading.LoadRecords<SsrsSubscriptionRecord>(Path.Combine(rawRoot, "ssrs_subscriptions.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.ReportPath), "SSRS subscription");
+var collectionErrors = Loading.LoadRecords<ErrorRecord>(Path.Combine(rawRoot, "_errors.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Error), "collection error");
 var previous = Loading.LoadPreviousSnapshot(options.PreviousPath, json);
 Writing.CleanupOldSnapshots(options.OutputPath, thresholds.SnapshotRetentionDays);
 var observedServers = services.Select(x => x.Server)
