@@ -7,6 +7,37 @@ namespace OtSnapshotReporter.Infrastructure;
 
 public static class Writing
 {
+    public static void WriteTextAtomically(string path, string contents, Encoding? encoding = null)
+    {
+        var tempPath = path + ".tmp";
+        try
+        {
+            if (encoding is null)
+            {
+                File.WriteAllText(tempPath, contents);
+            }
+            else
+            {
+                File.WriteAllText(tempPath, contents, encoding);
+            }
+
+            File.Move(tempPath, path, overwrite: true);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+                // Preserve the original write failure; the temporary file can be retried later.
+            }
+
+            throw;
+        }
+    }
+
     public static void WriteSummaryJson(string path, string outputPath, IReadOnlyCollection<Finding> findings)
     {
         var summary = new
@@ -16,7 +47,7 @@ public static class Writing
             counts = findings.GroupBy(x => x.Severity).ToDictionary(g => g.Key.ToString(), g => g.Count()),
             total = findings.Count
         };
-        File.WriteAllText(path, JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
+        WriteTextAtomically(path, JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
     }
 
     public static string GetAvailableReportRoot(string outputPath, DateTime timestamp)
@@ -111,15 +142,15 @@ public static class Writing
         var json = new JsonSerializerOptions { WriteIndented = true };
 
         var servicesConfig = new ExpectedServicesConfig(services.OrderBy(x => x.Server).ThenBy(x => x.Name).Select(x => new ExpectedService(x.Server, x.Name, x.Status, x.StartupType, "Critical")).ToList());
-        File.WriteAllText(Path.Combine(configPath, "expected_services.json"), JsonSerializer.Serialize(servicesConfig, json));
+        WriteTextAtomically(Path.Combine(configPath, "expected_services.json"), JsonSerializer.Serialize(servicesConfig, json));
 
         var tasksConfig = new ExpectedTasksConfig(tasks.OrderBy(x => x.Server).ThenBy(x => x.TaskPath).ThenBy(x => x.TaskName).Select(x => new ExpectedTask(x.Server, x.TaskPath, x.TaskName, x.Enabled)).ToList());
-        File.WriteAllText(Path.Combine(configPath, "expected_tasks.json"), JsonSerializer.Serialize(tasksConfig, json));
+        WriteTextAtomically(Path.Combine(configPath, "expected_tasks.json"), JsonSerializer.Serialize(tasksConfig, json));
 
         var softwareConfig = new ExpectedSoftwareConfig(software.Where(x => !string.IsNullOrWhiteSpace(x.Version)).OrderBy(x => x.Server).ThenBy(x => x.Name).Select(x => new ExpectedSoftware(x.Server, x.Name, x.Version ?? "")).ToList());
-        File.WriteAllText(Path.Combine(configPath, "expected_software.json"), JsonSerializer.Serialize(softwareConfig, json));
+        WriteTextAtomically(Path.Combine(configPath, "expected_software.json"), JsonSerializer.Serialize(softwareConfig, json));
 
         var driversConfig = new ExpectedDriversConfig(drivers.Where(x => !string.IsNullOrWhiteSpace(x.Version)).OrderBy(x => x.Server).ThenBy(x => x.Type).ThenBy(x => x.Name).ThenBy(x => x.Architecture).Select(x => new ExpectedDriver(x.Server, x.Type, x.Name, x.Architecture, x.Version ?? "")).ToList());
-        File.WriteAllText(Path.Combine(configPath, "expected_drivers.json"), JsonSerializer.Serialize(driversConfig, json));
+        WriteTextAtomically(Path.Combine(configPath, "expected_drivers.json"), JsonSerializer.Serialize(driversConfig, json));
     }
 }

@@ -171,13 +171,13 @@ public static class Loading
             }
             else
             {
-                File.WriteAllText(Path.Combine(mergedDir, group.Key ?? "unknown.json"), JsonSerializer.Serialize(mergedItems, new JsonSerializerOptions { WriteIndented = true }));
+                Writing.WriteTextAtomically(Path.Combine(mergedDir, group.Key ?? "unknown.json"), JsonSerializer.Serialize(mergedItems, new JsonSerializerOptions { WriteIndented = true }));
             }
         }
 
         if (mergedErrorItems.Count > 0)
         {
-            File.WriteAllText(Path.Combine(mergedDir, "_errors.json"), JsonSerializer.Serialize(mergedErrorItems, new JsonSerializerOptions { WriteIndented = true }));
+            Writing.WriteTextAtomically(Path.Combine(mergedDir, "_errors.json"), JsonSerializer.Serialize(mergedErrorItems, new JsonSerializerOptions { WriteIndented = true }));
         }
 
         return mergedDir;

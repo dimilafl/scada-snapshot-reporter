@@ -66,6 +66,30 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public void WriteTextAtomically_ReplacesContentAndRemovesTemporaryFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-atomic-write-test-" + Guid.NewGuid());
+        var path = Path.Combine(root, "report.txt");
+        try
+        {
+            Directory.CreateDirectory(root);
+            File.WriteAllText(path, "old");
+
+            Writing.WriteTextAtomically(path, "new");
+
+            Assert.Equal("new", File.ReadAllText(path));
+            Assert.False(File.Exists(path + ".tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void CleanupOldSnapshots_ContinuesWhenOneFolderIsLocked()
     {
         var root = Path.Combine(Path.GetTempPath(), "ot-retention-test-" + Guid.NewGuid());

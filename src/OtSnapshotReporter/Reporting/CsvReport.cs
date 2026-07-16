@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using OtSnapshotReporter.Infrastructure;
 using OtSnapshotReporter.Models;
 
 namespace OtSnapshotReporter.Reporting;
@@ -9,7 +10,7 @@ public static class CsvReport
     {
         var lines = new List<string> { "Module,Server,Subject,Severity,Message" };
         lines.AddRange(findings.Select(x => string.Join(",", Escape(x.Module), Escape(x.Server), Escape(x.Subject), Escape(x.Severity.ToString()), Escape(x.Message))));
-        File.WriteAllLines(path, lines, Encoding.UTF8);
+        Writing.WriteTextAtomically(path, string.Join(Environment.NewLine, lines) + Environment.NewLine, Encoding.UTF8);
     }
 
     public static string Escape(string? value)

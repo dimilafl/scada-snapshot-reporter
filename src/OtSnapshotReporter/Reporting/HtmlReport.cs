@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text;
+using OtSnapshotReporter.Infrastructure;
 using OtSnapshotReporter.Models;
 
 namespace OtSnapshotReporter.Reporting;
@@ -128,7 +129,7 @@ public static class HtmlReport
 
     private static void WritePage(string path, string title, string body)
     {
-        File.WriteAllText(path, $$"""
+        Writing.WriteTextAtomically(path, $$"""
             <!doctype html>
             <html lang="en">
             <head>
