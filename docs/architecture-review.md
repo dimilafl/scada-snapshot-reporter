@@ -21,6 +21,7 @@ As of 2026-07-16, the public tree has also addressed the following follow-on ris
 - Baseline acceptance now writes the expected configuration files without reserving an unused dated report folder; normal report runs still allocate and archive their raw inputs as before.
 - Disk free-space and disk-drop thresholds reject values outside the physical 0-100 percentage range before any report work begins.
 - Optional configuration arrays reject null and scalar entries before deserialization reaches analyzer code; valid missing files and empty arrays retain their existing defaults.
+- Generic drift comparison treats optional missing-item findings as nullable and skips them, preventing intentionally suppressed share/backup disappearance events from entering the findings list as null records.
 
 The remaining design debt below is intentionally scoped: module registration and versioned JSON schemas would reduce future maintenance cost, but the current explicit orchestration remains behaviorally covered by the hardening suite.
 

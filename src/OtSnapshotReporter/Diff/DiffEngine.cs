@@ -11,7 +11,7 @@ public static class DiffEngine
         IReadOnlyCollection<T> current,
         IReadOnlyCollection<T> previous,
         Func<T, string> keySelector,
-        Func<T, Finding> missingFinding,
+        Func<T, Finding?> missingFinding,
         Func<T, Finding?> newFinding,
         IReadOnlyCollection<FieldComparator<T>> fieldComparators)
     {
@@ -27,7 +27,11 @@ public static class DiffEngine
         {
             if (!currentByKey.TryGetValue(key, out var currentItem))
             {
-                yield return missingFinding(old);
+                var finding = missingFinding(old);
+                if (finding is not null)
+                {
+                    yield return finding;
+                }
                 continue;
             }
 

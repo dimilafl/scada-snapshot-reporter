@@ -64,6 +64,26 @@ public sealed class DiffEngineTests
     }
 
     [Fact]
+    public void DiffFileShares_DisappearedShare_DoesNotEmitNullFinding()
+    {
+        var previous = new FileShareRecord("SRV01", "Archive", "\\\\server\\archive", true, null, null);
+
+        var findings = DiffEngine.DiffFileShares([], [previous]).ToList();
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void DiffBackups_DisappearedPath_DoesNotEmitNullFinding()
+    {
+        var previous = new BackupFreshnessRecord("SRV01", "Exports", "C:\\Exports", 24, true, "latest.csv", null, 48, null);
+
+        var findings = DiffEngine.DiffBackups([], [previous]).ToList();
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
     public void DiffOdbcDsns_ConnectionFailure_ProducesHighFinding()
     {
         var current = new OdbcDsnRecord("SRV01", "Historian", "New Driver", "System", "64-bit", null, null, false);
