@@ -81,6 +81,8 @@ Recommendation: Either convention-based discovery (`Get-ChildItem Collect-*.ps1 
 
 ### 7. No JSON schema validation between collectors and engine
 
+**Status: Open.** Server coverage is now checked against `config/servers.json`, but field-level schema validation remains future design debt.
+
 The collector-to-engine contract is the implicit field names in `[pscustomobject]`. `PropertyNameCaseInsensitive = true` means typos in field names (`server` vs `Server`) are silently accepted but `displayName` renamed to `DisplayName` produces empty cells in HTML. No validation step exists.
 
 Recommendation: At minimum, smoke test asserts field presence on deserialized records. Ideally, embed a versioned schema hash per collector output.
@@ -129,7 +131,7 @@ Proposed: Server A --[Task Sched SYSTEM]--> local collect --> \\share\server-a\
 | **`Invoke-PerServer` error blobs contaminate data.** (Bug #3 above.) In per-server model, independent failures are more common. | High | Filter in engine post-deserialization; log server errors to separate report section. |
 | **Phase 2 modules have no diff detection.** (Bug #1 above.) File share that was up last run and is down now produces no drift finding. | High | Add Phase 2 records to `PreviousSnapshot` and implement diff methods. |
 | **Unbounded recursion in backup collector.** (Bug #4 above.) Misconfigured path hangs the collector. | Medium | Add depth limit or file count cap. |
-| **No "expected servers" vs "actual servers" tracking.** Engine loads whatever data is present. Missing server is not detected. | Medium | Engine reads `servers.json`, flags servers with no snapshot data as Critical finding. |
+| **No "expected servers" vs "actual servers" tracking.** Engine loads whatever data is present. Missing server is not detected. | Medium | **Resolved.** Engine reads `servers.json` and flags configured servers with no snapshot data as a Critical collection finding. |
 | **Engine merge step.** Separate `Merge-Snapshots.ps1` would be unnecessary coupling. Engine should discover per-server subdirs and load in memory. | Low | Engine discovers `--input` subdirs, iterates `raw/*.json` per server, concatenates. No separate merge tool. |
 
 ---
@@ -146,5 +148,6 @@ Proposed: Server A --[Task Sched SYSTEM]--> local collect --> \\share\server-a\
 | 6 | `Run-Collectors.ps1` hardcoded list | Medium | Design debt | No |
 | 7 | No JSON schema validation | Low | Design debt | No |
 | 8 | `Register-SnapshotTask` uses user identity, not SYSTEM | Low | Design debt | **Yes** |
+| 9 | Missing configured server coverage | Resolved | Correctness | No |
 
-Items 2, 3, and 8 are prerequisites for per-server local collection. Items 1, 4, 5, 6, 7 can be addressed independently.
+Items 2, 3, and 8 are prerequisites for per-server local collection. Server coverage is now implemented; field-level schema validation and the remaining design-debt items can be addressed independently.

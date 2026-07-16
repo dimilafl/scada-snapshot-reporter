@@ -142,6 +142,26 @@ public static class Analyzers
         }
     }
 
+    public static IEnumerable<Finding> AnalyzeMissingServers(ServersConfig config, IEnumerable<string> observedServers)
+    {
+        var observed = observedServers
+            .Where(server => !string.IsNullOrWhiteSpace(server))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var configured in config.Servers.Where(server => !string.IsNullOrWhiteSpace(server.Name)))
+        {
+            if (!observed.Contains(configured.Name))
+            {
+                yield return Finding.Create(
+                    "collection_errors",
+                    configured.Name,
+                    "Snapshot",
+                    Severity.Critical,
+                    "No collector data was received for configured server");
+            }
+        }
+    }
+
     public static IEnumerable<Finding> AnalyzeEventLogs(IEnumerable<EventLogSummaryRecord> records)
     {
         foreach (var record in records)

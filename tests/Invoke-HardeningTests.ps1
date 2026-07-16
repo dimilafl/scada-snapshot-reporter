@@ -113,6 +113,30 @@ exit 7
     if ($LASTEXITCODE -ne 1) { throw "Expected runner exit code 1, got $LASTEXITCODE" }
 }
 
+Test-Case "Collector runner forwards redaction to supported collectors" {
+    $redactionRunner = Join-Path $OutputRoot 'redaction-runner'
+    New-Item -ItemType Directory -Path $redactionRunner -Force | Out-Null
+    Copy-Item .\collectors\Run-Collectors.ps1 $redactionRunner
+    Set-Content -Path (Join-Path $redactionRunner 'Collect-RedactionProbe.ps1') -Value @'
+param(
+    [string] $ConfigPath,
+    [string] $OutputPath,
+    [switch] $RedactPaths
+)
+if (-not $RedactPaths) {
+    exit 8
+}
+New-Item -Path (Join-Path $OutputPath 'raw') -ItemType Directory -Force | Out-Null
+Set-Content -Path (Join-Path (Join-Path $OutputPath 'raw') 'redaction.json') -Value '{"redacted":true}'
+exit 0
+'@ -Encoding UTF8
+
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $redactionRunner 'Run-Collectors.ps1') `
+        -ConfigPath .\config -OutputPath (Join-Path $redactionRunner 'output') -RedactPaths 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "Expected redaction-capable probe to pass, got $LASTEXITCODE" }
+    Assert-FileExists (Join-Path (Join-Path (Join-Path $redactionRunner 'output') 'raw') 'redaction.json')
+}
+
 Test-Case "Scheduled wrapper reuses six-digit report folders" {
     $scheduledRoot = Join-Path (Resolve-Path $OutputRoot).Path 'scheduled-wrapper'
     $scheduledCollectors = Join-Path $scheduledRoot 'collectors'
@@ -171,6 +195,21 @@ $reportNoPrevious = Join-Path $OutputRoot 'report-no-previous'
 Test-Case "Engine runs with no previous snapshot" {
     dotnet run --project .\src\OtSnapshotReporter -- --input $collectorRun --config .\config --output $reportNoPrevious | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Engine failed with no previous snapshot" }
+}
+
+Test-Case "Engine flags configured servers with no snapshot data" {
+    $coverageConfig = Join-Path $OutputRoot 'coverage-config'
+    $coverageReport = Join-Path $OutputRoot 'coverage-report'
+    New-Item -ItemType Directory -Path $coverageConfig -Force | Out-Null
+    Copy-Item .\config\* -Destination $coverageConfig -Recurse -Force
+    Set-Content -Path (Join-Path $coverageConfig 'servers.json') -Value '{"servers":[{"name":"localhost","roles":["snapshot-host"]},{"name":"missing-server","roles":[]}]}' -Encoding UTF8
+
+    dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $coverageConfig --output $coverageReport | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Engine failed while checking configured server coverage" }
+
+    $latest = Get-LatestReport $coverageReport
+    $csv = Get-Content (Join-Path $latest 'exceptions.csv') -Raw
+    Assert-Contains $csv 'collection_errors,missing-server,Snapshot,Critical,No collector data was received for configured server'
 }
 
 Test-Case "Report index exists and is non-trivial" {
@@ -292,6 +331,32 @@ Test-Case "Retention cleanup removes old snapshots" {
     if (Test-Path (Join-Path $retentionOutput '2001-01-01_0000')) {
         throw "Old snapshot was not removed"
     }
+}
+
+Test-Case "Retention cleanup does not erase the previous snapshot before diffing" {
+    $retentionOutput = Join-Path $OutputRoot 'retention-previous-output'
+    $retentionConfig = Join-Path $OutputRoot 'retention-previous-config'
+    $oldPrevious = Join-Path $retentionOutput '2001-01-01_0000'
+    New-Item -ItemType Directory -Path (Join-Path $oldPrevious 'raw') -Force | Out-Null
+    Copy-Item -Path .\samples\previous\raw\* -Destination (Join-Path $oldPrevious 'raw') -Recurse -Force
+    New-Item -ItemType Directory -Path $retentionConfig -Force | Out-Null
+    Copy-Item -Path .\config\* -Destination $retentionConfig -Recurse -Force
+    @{
+        disk_free_percent_warning = 15
+        disk_free_percent_critical = 10
+        task_not_run_hours_warning = 24
+        reboot_detection_enabled = $true
+        disk_drop_percent_warning = 10
+        snapshot_retention_days = 1
+    } | ConvertTo-Json | Set-Content -Path (Join-Path $retentionConfig 'thresholds.json') -Encoding UTF8
+
+    dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\drift-current --config $retentionConfig --output $retentionOutput --previous $oldPrevious | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Engine failed while diffing a retained previous snapshot" }
+
+    $latest = Get-LatestReport $retentionOutput
+    $csv = Get-Content (Join-Path $latest 'exceptions.csv') -Raw
+    Assert-Contains $csv 'Service status changed from Running to Stopped'
+    if (Test-Path $oldPrevious) { throw "Old previous snapshot was not removed by retention" }
 }
 
 Test-Case "Engine handles empty input directory" {

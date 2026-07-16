@@ -43,6 +43,10 @@ jobs:
       - name: Run unit tests
         run: dotnet test .\tests\OtSnapshotReporter.Tests\OtSnapshotReporter.Tests.csproj --configuration Release --no-restore
 
+      - name: Run hardening tests
+        shell: pwsh
+        run: .\tests\Invoke-HardeningTests.ps1 -OutputRoot .\Output\ci-hardening
+
       - name: Run smoke tests
         shell: pwsh
         run: .\tests\Invoke-SmokeTests.ps1

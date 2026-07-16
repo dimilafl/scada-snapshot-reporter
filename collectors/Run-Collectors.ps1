@@ -23,11 +23,14 @@ foreach ($script in $collectorScripts) {
         ConfigPath = $ConfigPath
         OutputPath = $collectorOutputPath
     }
-    if ($RedactPaths -and $script.Name -in @('Collect-BackupFreshness.ps1', 'Collect-FileShareReachability.ps1', 'Collect-OdbcOleDbDrivers.ps1', 'Collect-ScheduledTasks.ps1', 'Collect-SoftwareInventory.ps1')) {
-        $collectorArgs.RedactPaths = $true
-    }
-
     try {
+        if ($RedactPaths) {
+            $collectorCommand = Get-Command -Name $script.FullName -ErrorAction Stop
+            if ($collectorCommand.Parameters.ContainsKey('RedactPaths')) {
+                $collectorArgs.RedactPaths = $true
+            }
+        }
+
         $LASTEXITCODE = 0
         & $script.FullName @collectorArgs
         if ($LASTEXITCODE -ne 0) {

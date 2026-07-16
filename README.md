@@ -28,6 +28,7 @@ It is **not affiliated** with any employer, utility, vendor, or production envir
 - Maintenance-window suppression
 - Certificate expiry tracker
 - ODBC DSN connection tests
+- Configured-server coverage findings when a server produces no snapshot data
 
 ## Layout
 

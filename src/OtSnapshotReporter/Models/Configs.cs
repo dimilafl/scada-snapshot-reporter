@@ -12,6 +12,13 @@ public sealed class Thresholds
     [JsonPropertyName("snapshot_retention_days")] public int SnapshotRetentionDays { get; set; } = 90;
 }
 
+public sealed record ServersConfig(List<ConfiguredServer> Servers)
+{
+    public ServersConfig() : this([]) { }
+}
+
+public sealed record ConfiguredServer(string Name, List<string>? Roles);
+
 public sealed record ExpectedServicesConfig(List<ExpectedService> Services)
 {
     public ExpectedServicesConfig() : this([]) { }

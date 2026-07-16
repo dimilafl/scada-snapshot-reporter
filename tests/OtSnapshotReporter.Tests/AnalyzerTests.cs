@@ -52,6 +52,26 @@ public sealed class AnalyzerTests
         Assert.Empty(Analyzers.AnalyzeServices([new("SRV01", "Foo", "Foo", "Running", "Automatic", "SYSTEM")], new ExpectedServicesConfig()));
     }
 
+    [Fact] public void AnalyzeMissingServers_MissingConfiguredServer_ProducesCritical()
+    {
+        var configured = new ServersConfig([new("SRV01", []), new("SRV02", [])]);
+
+        var findings = Analyzers.AnalyzeMissingServers(configured, ["SRV01"]).ToList();
+
+        var finding = Assert.Single(findings);
+        Assert.Equal("SRV02", finding.Server);
+        Assert.Equal("collection_errors", finding.Module);
+        Assert.Equal(Severity.Critical, finding.Severity);
+        Assert.Contains("No collector data", finding.Message);
+    }
+
+    [Fact] public void AnalyzeMissingServers_AllConfiguredServersObserved_ProducesNoFindings()
+    {
+        var configured = new ServersConfig([new("SRV01", [])]);
+
+        Assert.Empty(Analyzers.AnalyzeMissingServers(configured, ["srv01"]));
+    }
+
     [Fact] public void AnalyzeTasks_UnexpectedTaskWithoutFailure_ProducesNoFinding()
     {
         var task = new TaskRecord("SRV01", "\\Ops\\", "Extra", true, "Ready", DateTime.Now.ToString("s"), 0, null, "SYSTEM", "cmd.exe");

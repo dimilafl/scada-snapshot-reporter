@@ -43,7 +43,7 @@ var rawRoot = Loading.ResolveRawRoot(options.InputPath, options.OutputPath);
 Loading.CopyRawInputs(rawRoot, rawOutput);
 
 var thresholds = Loading.LoadJson<Thresholds>(Path.Combine(options.ConfigPath, "thresholds.json"), json) ?? new Thresholds();
-Writing.CleanupOldSnapshots(options.OutputPath, thresholds.SnapshotRetentionDays);
+var configuredServers = Loading.LoadJson<ServersConfig>(Path.Combine(options.ConfigPath, "servers.json"), json) ?? new ServersConfig();
 var expectedServices = Loading.LoadJson<ExpectedServicesConfig>(Path.Combine(options.ConfigPath, "expected_services.json"), json) ?? new ExpectedServicesConfig();
 var expectedTasks = Loading.LoadJson<ExpectedTasksConfig>(Path.Combine(options.ConfigPath, "expected_tasks.json"), json) ?? new ExpectedTasksConfig();
 var expectedSoftware = Loading.LoadJson<ExpectedSoftwareConfig>(Path.Combine(options.ConfigPath, "expected_software.json"), json) ?? new ExpectedSoftwareConfig();
@@ -65,8 +65,24 @@ var sqlAgentJobs = (Loading.LoadJson<List<SqlAgentJobRecord>>(Path.Combine(rawRo
 var ssrsSubscriptions = (Loading.LoadJson<List<SsrsSubscriptionRecord>>(Path.Combine(rawRoot, "ssrs_subscriptions.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
 var collectionErrors = (Loading.LoadJson<List<ErrorRecord>>(Path.Combine(rawRoot, "_errors.json"), json) ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Server)).ToList();
 var previous = Loading.LoadPreviousSnapshot(options.PreviousPath, json);
+Writing.CleanupOldSnapshots(options.OutputPath, thresholds.SnapshotRetentionDays);
+var observedServers = services.Select(x => x.Server)
+    .Concat(disks.Select(x => x.Server))
+    .Concat(tasks.Select(x => x.Server))
+    .Concat(uptimes.Select(x => x.Server))
+    .Concat(software.Select(x => x.Server))
+    .Concat(drivers.Select(x => x.Server))
+    .Concat(eventLogs.Select(x => x.Server))
+    .Concat(fileShares.Select(x => x.Server))
+    .Concat(backups.Select(x => x.Server))
+    .Concat(odbcDsns.Select(x => x.Server))
+    .Concat(certificates.Select(x => x.Server))
+    .Concat(sqlAgentJobs.Select(x => x.Server))
+    .Concat(ssrsSubscriptions.Select(x => x.Server))
+    .Concat(collectionErrors.Select(x => x.Server));
 
 var findings = new List<Finding>();
+findings.AddRange(Analyzers.AnalyzeMissingServers(configuredServers, observedServers));
 findings.AddRange(Analyzers.AnalyzeServices(services, expectedServices));
 findings.AddRange(Analyzers.AnalyzeDisks(disks, thresholds));
 findings.AddRange(Analyzers.AnalyzeTasks(tasks, expectedTasks, thresholds));
