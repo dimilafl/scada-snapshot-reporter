@@ -39,6 +39,32 @@ public sealed class InfrastructureTests
         Assert.Null(Loading.LoadJson<Thresholds>(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), new JsonSerializerOptions()));
     }
 
+    [Fact]
+    public void GetAvailableReportRoot_SkipsExistingFoldersAndFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-report-root-test-" + Guid.NewGuid());
+        var timestamp = new DateTime(2026, 7, 16, 12, 34, 56);
+        var first = Path.Combine(root, "2026-07-16_123456");
+        var second = Path.Combine(root, "2026-07-16_123457");
+        try
+        {
+            Directory.CreateDirectory(first);
+            Directory.CreateDirectory(root);
+            File.WriteAllText(second, "reserved");
+
+            var result = Writing.GetAvailableReportRoot(root, timestamp);
+
+            Assert.Equal(Path.Combine(root, "2026-07-16_123458"), result);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     [Fact] public void AppOptions_Help_ReturnsHelpRequest()
     {
         var options = AppOptions.Parse(["--help"]);

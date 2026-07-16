@@ -140,8 +140,7 @@ catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or A
     return 1;
 }
 
-var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
-var reportRoot = Path.Combine(options.OutputPath, runStamp);
+var reportRoot = Writing.GetAvailableReportRoot(options.OutputPath, DateTime.Now);
 var rawOutput = Path.Combine(reportRoot, "raw");
 
 Directory.CreateDirectory(reportRoot);

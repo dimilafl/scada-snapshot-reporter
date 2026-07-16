@@ -19,6 +19,21 @@ public static class Writing
         File.WriteAllText(path, JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
     }
 
+    public static string GetAvailableReportRoot(string outputPath, DateTime timestamp)
+    {
+        var candidateTime = timestamp;
+        while (true)
+        {
+            var candidate = Path.Combine(outputPath, candidateTime.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture));
+            if (!Directory.Exists(candidate) && !File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            candidateTime = candidateTime.AddSeconds(1);
+        }
+    }
+
     public static void CleanupOldSnapshots(string outputPath, int retentionDays)
     {
         if (!Directory.Exists(outputPath) || retentionDays <= 0)
