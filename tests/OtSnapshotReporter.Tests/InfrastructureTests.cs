@@ -65,6 +65,62 @@ public sealed class InfrastructureTests
         }
     }
 
+    [Fact]
+    public void CleanupOldSnapshots_ContinuesWhenOneFolderIsLocked()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-retention-test-" + Guid.NewGuid());
+        FileStream? blocker = null;
+        try
+        {
+            var locked = Path.Combine(root, "2001-01-01_0000", "snapshot.json");
+            var removable = Path.Combine(root, "2001-01-02_0000");
+            Directory.CreateDirectory(Path.GetDirectoryName(locked)!);
+            Directory.CreateDirectory(removable);
+            blocker = new FileStream(locked, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+            Writing.CleanupOldSnapshots(root, retentionDays: 1);
+
+            Assert.True(Directory.Exists(Path.GetDirectoryName(locked)));
+            Assert.False(Directory.Exists(removable));
+        }
+        finally
+        {
+            blocker?.Dispose();
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void CleanupOldCollectionStaging_ContinuesWhenOneFolderIsLocked()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-staging-retention-test-" + Guid.NewGuid());
+        FileStream? blocker = null;
+        try
+        {
+            var locked = Path.Combine(root, "collection_2001-01-01_000000", "snapshot.json");
+            var removable = Path.Combine(root, "collection_2001-01-02_000000");
+            Directory.CreateDirectory(Path.GetDirectoryName(locked)!);
+            Directory.CreateDirectory(removable);
+            blocker = new FileStream(locked, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+            Writing.CleanupOldCollectionStaging(root, retentionDays: 1);
+
+            Assert.True(Directory.Exists(Path.GetDirectoryName(locked)));
+            Assert.False(Directory.Exists(removable));
+        }
+        finally
+        {
+            blocker?.Dispose();
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     [Fact] public void AppOptions_Help_ReturnsHelpRequest()
     {
         var options = AppOptions.Parse(["--help"]);

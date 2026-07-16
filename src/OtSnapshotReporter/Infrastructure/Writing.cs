@@ -42,15 +42,14 @@ public static class Writing
         }
 
         var cutoff = DateTime.Now.AddDays(-1 * retentionDays);
-        foreach (var dir in Directory.GetDirectories(outputPath))
+        foreach (var dir in GetDirectories(outputPath, "snapshots"))
         {
             var name = Path.GetFileName(dir);
             if (name.Length >= 15 &&
                 DateTime.TryParseExact(name[..15], "yyyy-MM-dd_HHmm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp) &&
                 timestamp < cutoff)
             {
-                Directory.Delete(dir, recursive: true);
-                Console.WriteLine($"Cleaned up old snapshot: {name}");
+                TryDeleteDirectory(dir, "old snapshot", name);
             }
         }
     }
@@ -63,7 +62,7 @@ public static class Writing
         }
 
         var cutoff = DateTime.Now.AddDays(-1 * retentionDays);
-        foreach (var dir in Directory.GetDirectories(outputPath))
+        foreach (var dir in GetDirectories(outputPath, "collection staging folders"))
         {
             var name = Path.GetFileName(dir);
             const string prefix = "collection_";
@@ -74,8 +73,35 @@ public static class Writing
                 continue;
             }
 
-            Directory.Delete(dir, recursive: true);
-            Console.WriteLine($"Cleaned up old collection staging: {name}");
+            TryDeleteDirectory(dir, "old collection staging", name);
+        }
+    }
+
+    private static IReadOnlyCollection<string> GetDirectories(string outputPath, string description)
+    {
+        try
+        {
+            return Directory.GetDirectories(outputPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"WARNING: Could not inspect {description} under {outputPath}: {ex.Message}");
+            return Array.Empty<string>();
+        }
+    }
+
+    private static bool TryDeleteDirectory(string path, string description, string name)
+    {
+        try
+        {
+            Directory.Delete(path, recursive: true);
+            Console.WriteLine($"Cleaned up {description}: {name}");
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"WARNING: Could not clean up {description} '{name}': {ex.Message}");
+            return false;
         }
     }
 
