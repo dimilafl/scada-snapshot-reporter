@@ -264,6 +264,37 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public void ResolveRawRoot_UsesFallbackWhenMergedStagingIsLocked()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-locked-merge-test-" + Guid.NewGuid());
+        FileStream? blocker = null;
+        try
+        {
+            var input = Path.Combine(root, "input", "server-a", "raw");
+            var output = Path.Combine(root, "output");
+            var stale = Path.Combine(output, "merged_raw", "stale.json");
+            Directory.CreateDirectory(input);
+            Directory.CreateDirectory(Path.GetDirectoryName(stale)!);
+            File.WriteAllText(Path.Combine(input, "services.json"), "[{\"server\":\"server-a\",\"name\":\"Current\"}]");
+            File.WriteAllText(stale, "[]");
+            blocker = new FileStream(stale, FileMode.Open, FileAccess.Read, FileShare.None);
+
+            var merged = Loading.ResolveRawRoot(Path.Combine(root, "input"), output);
+
+            Assert.NotEqual(Path.Combine(output, "merged_raw"), merged);
+            Assert.True(File.Exists(Path.Combine(merged, "services.json")));
+        }
+        finally
+        {
+            blocker?.Dispose();
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void ResolveRawRoot_MergesLatestNestedPerServerFolders()
     {
         var root = Path.Combine(Path.GetTempPath(), "ot-nested-snapshot-test-" + Guid.NewGuid());

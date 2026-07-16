@@ -113,13 +113,7 @@ public static class Loading
             return Path.Combine(inputPath, "raw");
         }
 
-        var mergedDir = Path.Combine(outputPath, "merged_raw");
-        if (Directory.Exists(mergedDir))
-        {
-            Directory.Delete(mergedDir, recursive: true);
-        }
-
-        Directory.CreateDirectory(mergedDir);
+        var mergedDir = CreateMergeRoot(outputPath);
         var groupedFiles = serverRawFolders
             .SelectMany(raw => GetFilesSafely(raw, "*.json", "raw input files"))
             .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
@@ -239,7 +233,7 @@ public static class Loading
         {
             if (temporaryMergeRoot is not null && Directory.Exists(temporaryMergeRoot))
             {
-                Directory.Delete(temporaryMergeRoot, recursive: true);
+                TryDeleteTemporaryMergeRoot(temporaryMergeRoot);
             }
         }
     }
@@ -290,7 +284,7 @@ public static class Loading
                 !File.Exists(Path.Combine(candidate.Folder, "index.html")))
             .OrderByDescending(candidate => candidate.Timestamp.HasValue)
             .ThenByDescending(candidate => candidate.Timestamp ?? DateTime.MinValue)
-            .ThenByDescending(candidate => Directory.GetLastWriteTimeUtc(candidate.Raw))
+            .ThenByDescending(candidate => GetLastWriteTimeUtcOrMin(candidate.Raw))
             .Select(candidate => candidate.Raw)
             .FirstOrDefault();
     }
@@ -350,6 +344,70 @@ public static class Loading
         }
 
         return string.IsNullOrWhiteSpace(serverFolder?.Name) ? "unknown" : serverFolder.Name;
+    }
+
+    private static string CreateMergeRoot(string outputPath)
+    {
+        var preferred = Path.Combine(outputPath, "merged_raw");
+        if (Directory.Exists(preferred))
+        {
+            try
+            {
+                Directory.Delete(preferred, recursive: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine($"Warning: Could not reset merged raw staging: {ex.Message}");
+                return CreateFallbackMergeRoot(outputPath);
+            }
+        }
+        else if (File.Exists(preferred))
+        {
+            Console.Error.WriteLine($"Warning: Merged raw staging path is a file: {preferred}");
+            return CreateFallbackMergeRoot(outputPath);
+        }
+
+        try
+        {
+            Directory.CreateDirectory(preferred);
+            return preferred;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Warning: Could not create merged raw staging: {ex.Message}");
+            return CreateFallbackMergeRoot(outputPath);
+        }
+    }
+
+    private static string CreateFallbackMergeRoot(string outputPath)
+    {
+        var fallback = Path.Combine(outputPath, $"merged_raw_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(fallback);
+        return fallback;
+    }
+
+    private static void TryDeleteTemporaryMergeRoot(string path)
+    {
+        try
+        {
+            Directory.Delete(path, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Warning: Could not remove temporary previous snapshot merge: {ex.Message}");
+        }
+    }
+
+    private static DateTime GetLastWriteTimeUtcOrMin(string path)
+    {
+        try
+        {
+            return Directory.GetLastWriteTimeUtc(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return DateTime.MinValue;
+        }
     }
 
     private static string[] GetFilesSafely(string path, string searchPattern, string description)
