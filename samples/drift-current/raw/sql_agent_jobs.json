@@ -1,0 +1,16 @@
+[
+  {
+    "server": "localhost",
+    "instance": ".",
+    "jobName": "Nightly Data Load",
+    "enabled": true,
+    "lastRunDate": "20260716",
+    "lastRunTime": "020000",
+    "lastRunStatus": 0,
+    "lastRunDuration": 125,
+    "lastRunMessage": "The job failed. The step failed.",
+    "dateCreated": "2025-01-10T08:00:00",
+    "dateModified": "2026-07-16T02:05:00",
+    "jobOwner": "report-owner-new"
+  }
+]

@@ -52,6 +52,8 @@ try {
     Assert-Contains -Content $exceptions -Expected 'Newest file age increased from 10h to 57.5h'
     Assert-Contains -Content $exceptions -Expected 'DSN connection test failed'
     Assert-Contains -Content $exceptions -Expected 'Certificate expires in 17 days'
+    Assert-Contains -Content $exceptions -Expected 'SQL Agent job last run status changed'
+    Assert-Contains -Content $exceptions -Expected 'SSRS subscription owner availability changed'
 
     $matrix = Get-Content -Path (Join-Path $latest.FullName 'software_matrix.html') -Raw
     Assert-Contains -Content $matrix -Expected '<th>Component</th><th>localhost</th><th>Expected</th>'
@@ -61,7 +63,7 @@ try {
     Assert-Contains -Content $driverMatrix -Expected '<h1>ODBC/OLE DB Matrix</h1>'
     Assert-Contains -Content $driverMatrix -Expected '<td>ODBC | SQL Server Native Client | 64-bit</td><td>11.1</td>'
 
-    foreach ($reportName in @('event_log_summary.html', 'file_shares.html', 'backup_freshness.html', 'odbc_dsn_tests.html', 'certificates.html')) {
+    foreach ($reportName in @('event_log_summary.html', 'file_shares.html', 'backup_freshness.html', 'odbc_dsn_tests.html', 'certificates.html', 'sql_agent_jobs.html', 'ssrs_subscriptions.html')) {
         if (-not (Test-Path (Join-Path $latest.FullName $reportName))) {
             throw "Expected report page was not generated: $reportName"
         }

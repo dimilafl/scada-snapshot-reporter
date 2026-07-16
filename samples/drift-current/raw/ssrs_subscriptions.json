@@ -1,0 +1,13 @@
+[
+  {
+    "server": "localhost",
+    "instance": ".",
+    "reportPath": "/Reports/Daily Summary",
+    "subscriptionDescription": "Daily summary delivery",
+    "owner": "disabled-owner",
+    "ownerExists": false,
+    "lastStatus": "Failure sending mail",
+    "lastRunTime": "2026-07-16T06:00:00",
+    "enabled": true
+  }
+]

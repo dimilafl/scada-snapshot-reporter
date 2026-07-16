@@ -1,0 +1,13 @@
+[
+  {
+    "server": "localhost",
+    "instance": ".",
+    "reportPath": "/Reports/Daily Summary",
+    "subscriptionDescription": "Daily summary delivery",
+    "owner": "report-operator",
+    "ownerExists": true,
+    "lastStatus": "Done",
+    "lastRunTime": "2026-07-15T06:00:00",
+    "enabled": true
+  }
+]
