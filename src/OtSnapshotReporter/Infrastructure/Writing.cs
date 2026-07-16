@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using OtSnapshotReporter.Models;
 
 namespace OtSnapshotReporter.Infrastructure;
@@ -177,6 +178,98 @@ public static class Writing
         }
     }
 
+    public static string CreateReportStagingRoot(string outputPath)
+    {
+        Directory.CreateDirectory(outputPath);
+        while (true)
+        {
+            var candidate = Path.Combine(outputPath, $".report-staging-{Guid.NewGuid():N}");
+            try
+            {
+                Directory.CreateDirectory(candidate);
+                return candidate;
+            }
+            catch (IOException) when (Directory.Exists(candidate) || File.Exists(candidate))
+            {
+                // A GUID collision is extraordinarily unlikely, but retry without exposing a partial build.
+            }
+        }
+    }
+
+    public static string PublishReport(string stagingPath, string outputPath, DateTime timestamp)
+    {
+        var fullStagingPath = Path.GetFullPath(stagingPath);
+        var fullOutputPath = Path.GetFullPath(outputPath);
+        var stagingParent = Path.GetDirectoryName(fullStagingPath)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedOutput = fullOutputPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (!string.Equals(stagingParent, normalizedOutput, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Report staging must be directly under the output path.", nameof(stagingPath));
+        }
+
+        if (!Directory.Exists(fullStagingPath))
+        {
+            throw new DirectoryNotFoundException($"Report staging path does not exist: {stagingPath}");
+        }
+
+        var candidateTime = timestamp;
+        while (true)
+        {
+            var candidate = Path.Combine(fullOutputPath, candidateTime.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture));
+            if (Directory.Exists(candidate) || File.Exists(candidate))
+            {
+                candidateTime = candidateTime.AddSeconds(1);
+                continue;
+            }
+
+            try
+            {
+                UpdateSummaryOutputPath(fullStagingPath, candidate);
+                Directory.Move(fullStagingPath, candidate);
+                return candidate;
+            }
+            catch (IOException) when (Directory.Exists(candidate) || File.Exists(candidate))
+            {
+                candidateTime = candidateTime.AddSeconds(1);
+            }
+        }
+    }
+
+    private static void UpdateSummaryOutputPath(string stagingPath, string publishedPath)
+    {
+        var summaryPath = Path.Combine(stagingPath, "summary.json");
+        if (!File.Exists(summaryPath))
+        {
+            return;
+        }
+
+        var summary = JsonNode.Parse(File.ReadAllText(summaryPath)) as JsonObject
+            ?? throw new InvalidDataException($"Summary is not a JSON object: {summaryPath}");
+        summary["outputPath"] = publishedPath;
+        WriteTextAtomically(summaryPath, summary.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
+    }
+
+    public static void DiscardReportStaging(string stagingPath)
+    {
+        var fullPath = Path.GetFullPath(stagingPath);
+        if (!Path.GetFileName(fullPath).StartsWith(".report-staging-", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only report staging folders can be discarded.", nameof(stagingPath));
+        }
+
+        try
+        {
+            if (Directory.Exists(fullPath))
+            {
+                Directory.Delete(fullPath, recursive: true);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"WARNING: Could not discard report staging '{fullPath}': {ex.Message}");
+        }
+    }
+
     public static void CleanupOldSnapshots(string outputPath, int retentionDays)
     {
         if (!Directory.Exists(outputPath) || retentionDays <= 0)
@@ -225,6 +318,9 @@ public static class Writing
 
     public static void CleanupOldReportReservations(string outputPath, int retentionDays) =>
         CleanupOldGeneratedStaging(outputPath, retentionDays, ".report-reservation-", "old report reservation");
+
+    public static void CleanupOldReportStaging(string outputPath, int retentionDays) =>
+        CleanupOldGeneratedStaging(outputPath, retentionDays, ".report-staging-", "old report staging");
 
     private static void CleanupOldGeneratedStaging(string outputPath, int retentionDays, string prefix, string description)
     {

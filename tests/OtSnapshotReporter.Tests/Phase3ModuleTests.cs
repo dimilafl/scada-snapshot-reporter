@@ -70,4 +70,18 @@ public sealed class Phase3ModuleTests
         Assert.Equal(Severity.Info, suppressed.Severity);
         Assert.Contains("Suppressed by maintenance window", suppressed.Message);
     }
+
+    [Fact]
+    public void MaintenanceWindow_TrimsServerAndModuleScopes()
+    {
+        var now = DateTime.Now;
+        var config = new MaintenanceWindowsConfig([
+            new("Patch", now.AddMinutes(-1).ToString("o"), now.AddMinutes(30).ToString("o"), [" SRV01 "], [" services "], null)
+        ]);
+        var finding = Finding.Create("services", "SRV01", "EventLog", Severity.High, "Service status is Stopped");
+
+        var result = FindingPostProcessors.ApplyMaintenanceWindows([finding], config, now);
+
+        Assert.Equal(Severity.Info, Assert.Single(result).Severity);
+    }
 }

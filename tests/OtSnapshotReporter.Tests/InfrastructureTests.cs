@@ -96,6 +96,80 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public void CreateReportStagingRoot_CreatesHiddenBuildFolder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-report-staging-test-" + Guid.NewGuid());
+        try
+        {
+            var staging = Writing.CreateReportStagingRoot(root);
+
+            Assert.True(Directory.Exists(staging));
+            Assert.Equal(root, Directory.GetParent(staging)?.FullName);
+            Assert.StartsWith(".report-staging-", Path.GetFileName(staging), StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void PublishReport_MovesStagingAndSkipsExistingReportNames()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-report-publish-test-" + Guid.NewGuid());
+        var timestamp = new DateTime(2026, 7, 16, 12, 34, 56);
+        Directory.CreateDirectory(Path.Combine(root, "2026-07-16_123456"));
+        File.WriteAllText(Path.Combine(root, "2026-07-16_123457"), "reserved");
+
+        try
+        {
+            var staging = Writing.CreateReportStagingRoot(root);
+            File.WriteAllText(Path.Combine(staging, "index.html"), "complete");
+            Writing.WriteSummaryJson(Path.Combine(staging, "summary.json"), staging, []);
+
+            var published = Writing.PublishReport(staging, root, timestamp);
+
+            Assert.Equal(Path.Combine(root, "2026-07-16_123458"), published);
+            Assert.Equal("complete", File.ReadAllText(Path.Combine(published, "index.html")));
+            using var summary = JsonDocument.Parse(File.ReadAllText(Path.Combine(published, "summary.json")));
+            Assert.Equal(published, summary.RootElement.GetProperty("outputPath").GetString());
+            Assert.False(Directory.Exists(staging));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void DiscardReportStaging_RemovesIncompleteBuild()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-report-discard-test-" + Guid.NewGuid());
+        try
+        {
+            var staging = Writing.CreateReportStagingRoot(root);
+            File.WriteAllText(Path.Combine(staging, "partial.html"), "partial");
+
+            Writing.DiscardReportStaging(staging);
+
+            Assert.False(Directory.Exists(staging));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CreateAvailableReportRoot_ConcurrentCallsReturnDistinctFolders()
     {
         var root = Path.Combine(Path.GetTempPath(), "ot-report-concurrency-test-" + Guid.NewGuid());

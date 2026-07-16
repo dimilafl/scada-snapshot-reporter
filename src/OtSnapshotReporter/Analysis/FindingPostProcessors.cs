@@ -67,21 +67,24 @@ public static class FindingPostProcessors
             return false;
         }
 
-        if (window.Servers is { Count: > 0 } &&
-            !window.Servers.Contains("*", StringComparer.OrdinalIgnoreCase) &&
-            !window.Servers.Contains(finding.Server, StringComparer.OrdinalIgnoreCase))
+        if (!MatchesScope(window.Servers, finding.Server))
         {
             return false;
         }
 
-        if (window.Modules is { Count: > 0 } &&
-            !window.Modules.Contains("*", StringComparer.OrdinalIgnoreCase) &&
-            !window.Modules.Contains(finding.Module, StringComparer.OrdinalIgnoreCase))
+        if (!MatchesScope(window.Modules, finding.Module))
         {
             return false;
         }
 
         return true;
+    }
+
+    private static bool MatchesScope(IReadOnlyCollection<string>? scope, string value)
+    {
+        return scope is not { Count: > 0 } || scope.Any(candidate =>
+            string.Equals(candidate?.Trim(), "*", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(candidate?.Trim(), value.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
     private static string NormalizeMessage(string message) =>

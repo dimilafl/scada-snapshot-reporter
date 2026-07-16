@@ -50,16 +50,6 @@ var json = new JsonSerializerOptions
     Converters = { new JsonStringEnumConverter() }
 };
 
-T LoadOptionalConfig<T>(string path, T fallback, string collectionPropertyName) where T : class
-{
-    if (!File.Exists(path))
-    {
-        return fallback;
-    }
-
-    return Loading.LoadConfig<T>(path, json, collectionPropertyName);
-}
-
 var thresholdsPath = Path.Combine(options.ConfigPath, "thresholds.json");
 var thresholds = new Thresholds();
 if (File.Exists(thresholdsPath))
@@ -126,10 +116,22 @@ ExpectedDriversConfig expectedDrivers;
 MaintenanceWindowsConfig maintenanceWindows;
 try
 {
-    expectedServices = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_services.json"), new ExpectedServicesConfig(), "services");
-    expectedTasks = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_tasks.json"), new ExpectedTasksConfig(), "tasks");
-    expectedSoftware = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_software.json"), new ExpectedSoftwareConfig(), "software");
-    expectedDrivers = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_drivers.json"), new ExpectedDriversConfig(), "drivers");
+    var expectedServicesPath = Path.Combine(options.ConfigPath, "expected_services.json");
+    expectedServices = File.Exists(expectedServicesPath)
+        ? Loading.LoadExpectedServicesConfig(expectedServicesPath, json)
+        : new ExpectedServicesConfig();
+    var expectedTasksPath = Path.Combine(options.ConfigPath, "expected_tasks.json");
+    expectedTasks = File.Exists(expectedTasksPath)
+        ? Loading.LoadExpectedTasksConfig(expectedTasksPath, json)
+        : new ExpectedTasksConfig();
+    var expectedSoftwarePath = Path.Combine(options.ConfigPath, "expected_software.json");
+    expectedSoftware = File.Exists(expectedSoftwarePath)
+        ? Loading.LoadExpectedSoftwareConfig(expectedSoftwarePath, json)
+        : new ExpectedSoftwareConfig();
+    var expectedDriversPath = Path.Combine(options.ConfigPath, "expected_drivers.json");
+    expectedDrivers = File.Exists(expectedDriversPath)
+        ? Loading.LoadExpectedDriversConfig(expectedDriversPath, json)
+        : new ExpectedDriversConfig();
     var maintenanceWindowsPath = Path.Combine(options.ConfigPath, "maintenance_windows.json");
     maintenanceWindows = File.Exists(maintenanceWindowsPath)
         ? Loading.LoadMaintenanceWindowsConfig(maintenanceWindowsPath, json)
@@ -155,6 +157,7 @@ try
 {
     Writing.CleanupOldMergeStaging(options.OutputPath, thresholds.SnapshotRetentionDays);
     Writing.CleanupOldReportReservations(options.OutputPath, thresholds.SnapshotRetentionDays);
+    Writing.CleanupOldReportStaging(options.OutputPath, thresholds.SnapshotRetentionDays);
 }
 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
 {
@@ -240,39 +243,47 @@ if (findings.Count == 0)
 }
 
 string reportRoot;
-string rawOutput;
+string? reportStagingRoot = null;
 try
 {
-    reportRoot = Writing.CreateAvailableReportRoot(options.OutputPath, DateTime.Now);
-    rawOutput = Path.Combine(reportRoot, "raw");
+    reportStagingRoot = Writing.CreateReportStagingRoot(options.OutputPath);
+    var rawOutput = Path.Combine(reportStagingRoot, "raw");
     Directory.CreateDirectory(rawOutput);
     Loading.CopyRawInputs(rawRoot, rawOutput);
+
+    var pages = Loading.GetModuleDescriptors().Select(x => (x.HtmlFile, x.DisplayName)).Append(("exceptions.csv", "Exceptions CSV")).ToList();
+    HtmlReport.WriteIndex(Path.Combine(reportStagingRoot, "index.html"), findings, pages);
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "services.html"), "Windows Services", services, findings, "services");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "disk_space.html"), "Disk Space", disks, findings, "disk");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "scheduled_tasks.html"), "Scheduled Tasks", tasks, findings, "scheduled_tasks");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "reboots.html"), "Unexpected Reboot Detection", uptimes, findings, "uptime");
+    HtmlReport.WriteSoftwareMatrix(Path.Combine(reportStagingRoot, "software_matrix.html"), software, expectedSoftware, findings);
+    HtmlReport.WriteDriverMatrix(Path.Combine(reportStagingRoot, "odbc_oledb_inventory.html"), drivers, expectedDrivers, findings);
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "errors.html"), "Collection Errors", collectionErrors, findings, "collection_errors");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "event_log_summary.html"), "Event Log Summary", eventLogs, findings, "event_logs");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "file_shares.html"), "File Share Reachability", fileShares, findings, "file_shares");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "backup_freshness.html"), "Backup Freshness", backups, findings, "backups");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "odbc_dsn_tests.html"), "ODBC DSN Tests", odbcDsns, findings, "odbc_dsns");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "certificates.html"), "Certificate Expiry", certificates, findings, "certificates");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "sql_agent_jobs.html"), "SQL Agent Jobs", sqlAgentJobs, findings, "sql_agent_jobs");
+    HtmlReport.WriteTable(Path.Combine(reportStagingRoot, "ssrs_subscriptions.html"), "SSRS Subscriptions", ssrsSubscriptions, findings, "ssrs_subscriptions");
+    HtmlReport.WriteFindingsPage(Path.Combine(reportStagingRoot, "correlation.html"), "Cross-Server Correlation", findings, "correlation");
+    CsvReport.WriteFindings(Path.Combine(reportStagingRoot, "exceptions.csv"), findings);
+    Writing.WriteSummaryJson(Path.Combine(reportStagingRoot, "summary.json"), reportStagingRoot, findings);
+
+    reportRoot = Writing.PublishReport(reportStagingRoot, options.OutputPath, DateTime.Now);
+    reportStagingRoot = null;
 }
 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
 {
+    if (reportStagingRoot is not null)
+    {
+        Writing.DiscardReportStaging(reportStagingRoot);
+    }
+
     Console.Error.WriteLine($"Error: Cannot prepare report folder under {options.OutputPath}. {ex.Message}");
     return 1;
 }
-
-var pages = Loading.GetModuleDescriptors().Select(x => (x.HtmlFile, x.DisplayName)).Append(("exceptions.csv", "Exceptions CSV")).ToList();
-HtmlReport.WriteIndex(Path.Combine(reportRoot, "index.html"), findings, pages);
-HtmlReport.WriteTable(Path.Combine(reportRoot, "services.html"), "Windows Services", services, findings, "services");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "disk_space.html"), "Disk Space", disks, findings, "disk");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "scheduled_tasks.html"), "Scheduled Tasks", tasks, findings, "scheduled_tasks");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "reboots.html"), "Unexpected Reboot Detection", uptimes, findings, "uptime");
-HtmlReport.WriteSoftwareMatrix(Path.Combine(reportRoot, "software_matrix.html"), software, expectedSoftware, findings);
-HtmlReport.WriteDriverMatrix(Path.Combine(reportRoot, "odbc_oledb_inventory.html"), drivers, expectedDrivers, findings);
-HtmlReport.WriteTable(Path.Combine(reportRoot, "errors.html"), "Collection Errors", collectionErrors, findings, "collection_errors");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "event_log_summary.html"), "Event Log Summary", eventLogs, findings, "event_logs");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "file_shares.html"), "File Share Reachability", fileShares, findings, "file_shares");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "backup_freshness.html"), "Backup Freshness", backups, findings, "backups");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "odbc_dsn_tests.html"), "ODBC DSN Tests", odbcDsns, findings, "odbc_dsns");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "certificates.html"), "Certificate Expiry", certificates, findings, "certificates");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "sql_agent_jobs.html"), "SQL Agent Jobs", sqlAgentJobs, findings, "sql_agent_jobs");
-HtmlReport.WriteTable(Path.Combine(reportRoot, "ssrs_subscriptions.html"), "SSRS Subscriptions", ssrsSubscriptions, findings, "ssrs_subscriptions");
-HtmlReport.WriteFindingsPage(Path.Combine(reportRoot, "correlation.html"), "Cross-Server Correlation", findings, "correlation");
-CsvReport.WriteFindings(Path.Combine(reportRoot, "exceptions.csv"), findings);
-Writing.WriteSummaryJson(Path.Combine(reportRoot, "summary.json"), reportRoot, findings);
 
 Console.WriteLine($"Report written to {reportRoot}");
 return 0;

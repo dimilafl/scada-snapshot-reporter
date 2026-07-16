@@ -66,10 +66,10 @@ public static class Analyzers
             }
         }
 
-        var actual = taskRecords.GroupBy(x => Helpers.Key(x.Server, x.TaskPath + x.TaskName), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var actual = taskRecords.GroupBy(x => Helpers.Key(x.Server, x.TaskPath, x.TaskName), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var expected in config.Tasks)
         {
-            if (!actual.TryGetValue(Helpers.Key(expected.Server, expected.TaskPath + expected.TaskName), out var task))
+            if (!actual.TryGetValue(Helpers.Key(expected.Server, expected.TaskPath, expected.TaskName), out var task))
             {
                 yield return Finding.Create("scheduled_tasks", expected.Server, expected.TaskPath + expected.TaskName, Severity.High, "Expected task is missing");
                 continue;
@@ -146,6 +146,7 @@ public static class Analyzers
     {
         var observed = observedServers
             .Where(server => !string.IsNullOrWhiteSpace(server))
+            .Select(server => server.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var configured in config.Servers.Where(server => !string.IsNullOrWhiteSpace(server.Name)))

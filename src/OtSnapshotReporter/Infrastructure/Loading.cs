@@ -98,6 +98,80 @@ public static class Loading
         return config;
     }
 
+    public static ExpectedServicesConfig LoadExpectedServicesConfig(string path, JsonSerializerOptions options)
+    {
+        var config = LoadConfig<ExpectedServicesConfig>(path, options, "services");
+        ValidateExpectedEntries(config.Services, path, "services",
+            entry => string.IsNullOrWhiteSpace(entry.Server) ? "server" :
+                string.IsNullOrWhiteSpace(entry.Name) ? "name" :
+                string.IsNullOrWhiteSpace(entry.ExpectedStatus) ? "expected_status" : null,
+            entry => Helpers.Key(entry.Server, entry.Name));
+        return config;
+    }
+
+    public static ExpectedTasksConfig LoadExpectedTasksConfig(string path, JsonSerializerOptions options)
+    {
+        var config = LoadConfig<ExpectedTasksConfig>(path, options, "tasks");
+        ValidateExpectedEntries(config.Tasks, path, "tasks",
+            entry => string.IsNullOrWhiteSpace(entry.Server) ? "server" :
+                string.IsNullOrWhiteSpace(entry.TaskPath) ? "task_path" :
+                string.IsNullOrWhiteSpace(entry.TaskName) ? "task_name" : null,
+            entry => Helpers.Key(entry.Server, entry.TaskPath, entry.TaskName));
+        return config;
+    }
+
+    public static ExpectedSoftwareConfig LoadExpectedSoftwareConfig(string path, JsonSerializerOptions options)
+    {
+        var config = LoadConfig<ExpectedSoftwareConfig>(path, options, "software");
+        ValidateExpectedEntries(config.Software, path, "software",
+            entry => string.IsNullOrWhiteSpace(entry.Server) ? "server" :
+                string.IsNullOrWhiteSpace(entry.Name) ? "name" :
+                string.IsNullOrWhiteSpace(entry.ExpectedVersion) ? "expected_version" : null,
+            entry => Helpers.Key(entry.Server, entry.Name));
+        return config;
+    }
+
+    public static ExpectedDriversConfig LoadExpectedDriversConfig(string path, JsonSerializerOptions options)
+    {
+        var config = LoadConfig<ExpectedDriversConfig>(path, options, "drivers");
+        ValidateExpectedEntries(config.Drivers, path, "drivers",
+            entry => string.IsNullOrWhiteSpace(entry.Server) ? "server" :
+                string.IsNullOrWhiteSpace(entry.Type) ? "type" :
+                string.IsNullOrWhiteSpace(entry.Name) ? "name" : null,
+            entry => Helpers.Key(entry.Server, entry.Type, entry.Name, entry.Architecture));
+        return config;
+    }
+
+    private static void ValidateExpectedEntries<T>(
+        IReadOnlyList<T>? entries,
+        string path,
+        string collectionName,
+        Func<T, string?> missingField,
+        Func<T, string> keySelector)
+    {
+        if (entries is null)
+        {
+            throw new InvalidDataException($"Config file must contain a '{collectionName}' array: {path}");
+        }
+
+        for (var index = 0; index < entries.Count; index++)
+        {
+            var field = missingField(entries[index]);
+            if (!string.IsNullOrWhiteSpace(field))
+            {
+                throw new InvalidDataException($"Config file '{path}' has invalid {collectionName} entry {index + 1}: '{field}' must be non-empty.");
+            }
+        }
+
+        var duplicate = entries
+            .GroupBy(keySelector, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new InvalidDataException($"Config file '{path}' contains duplicate {collectionName} identity '{duplicate.Key}'.");
+        }
+    }
+
     public static List<T> LoadRecords<T>(string path, JsonSerializerOptions options, Func<T, bool> isValid, string recordType) where T : class
     {
         if (!File.Exists(path))

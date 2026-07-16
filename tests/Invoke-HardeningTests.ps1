@@ -108,6 +108,22 @@ Test-Case "Smoke tests pass" {
     .\tests\Invoke-SmokeTests.ps1 | Out-Null
 }
 
+Test-Case "Engine publishes complete reports from staging" {
+    $transactionalRoot = Join-Path $OutputRoot 'transactional-report'
+    dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config .\config --output $transactionalRoot | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Transactional report run failed" }
+
+    $latest = Get-LatestReport $transactionalRoot
+    $summary = Get-Content (Join-Path $latest 'summary.json') -Raw | ConvertFrom-Json
+    if ($summary.outputPath -ne $latest) { throw "Summary outputPath does not match published report" }
+    if (@(Get-ChildItem -LiteralPath $transactionalRoot -Directory -Force | Where-Object { $_.Name -like '.report-staging-*' }).Count -ne 0) {
+        throw "Report staging folder remained after publish"
+    }
+    if (@(Get-ChildItem -LiteralPath $latest -Filter '*.html').Count -lt 10) {
+        throw "Published report is missing module pages"
+    }
+}
+
 $collectorRun = Join-Path $OutputRoot 'collector-run'
 Test-Case "All collectors run against localhost" {
     .\collectors\Run-Collectors.ps1 -OutputPath $collectorRun | Out-Null
@@ -779,6 +795,28 @@ Test-Case "Engine rejects a corrupt expected config" {
     if ($exitCode -ne 1) { throw "Expected corrupt expected config to exit 1, got $exitCode" }
     if (($output -join "`n") -notmatch 'Config file is invalid.*expected_services.json') { throw "Expected corrupt expected config error" }
     if (Test-Path $reportDir) { throw "Corrupt expected config created report output" }
+}
+
+Test-Case "Engine rejects malformed expected baseline entries" {
+    $configDir = Join-Path $OutputRoot 'malformed-expected-entry-config'
+    $reportDir = Join-Path $OutputRoot 'malformed-expected-entry-report'
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    Copy-Item .\config\* -Destination $configDir -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $configDir 'expected_services.json') -Value '{"services":[{"server":"localhost","name":null,"expected_status":"Running"}]}' -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $configDir --output $reportDir 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected malformed expected entry to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch "invalid services entry.*name") { throw "Expected malformed expected entry error" }
+    if (Test-Path $reportDir) { throw "Malformed expected entry created report output" }
 }
 
 Test-Case "Engine rejects an optional config with a null collection" {

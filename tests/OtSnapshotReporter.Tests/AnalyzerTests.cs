@@ -87,6 +87,13 @@ public sealed class AnalyzerTests
         Assert.Empty(Analyzers.AnalyzeMissingServers(configured, ["srv01"]));
     }
 
+    [Fact] public void AnalyzeMissingServers_TrimsObservedServerNames()
+    {
+        var configured = new ServersConfig([new("SRV01", [])]);
+
+        Assert.Empty(Analyzers.AnalyzeMissingServers(configured, [" SRV01 "]));
+    }
+
     [Fact] public void AnalyzeTasks_UnexpectedTaskWithoutFailure_ProducesNoFinding()
     {
         var task = new TaskRecord("SRV01", "\\Ops\\", "Extra", true, "Ready", DateTime.Now.ToString("s"), 0, null, "SYSTEM", "cmd.exe");
@@ -98,6 +105,21 @@ public sealed class AnalyzerTests
         var task = new TaskRecord("SRV01", "\\Ops\\", "Export", false, "Disabled", DateTime.Now.ToString("s"), 0, null, "SYSTEM", "cmd.exe");
         var findings = Analyzers.AnalyzeTasks([task], new ExpectedTasksConfig([new("SRV01", "\\Ops\\", "Export", true)]), new Thresholds()).ToList();
         Assert.Contains(findings, x => x.Severity == Severity.High);
+    }
+
+    [Fact]
+    public void AnalyzeTasks_DistinguishesTaskPathAndNameBoundaries()
+    {
+        var records = new[]
+        {
+            new TaskRecord("SRV01", "A", "BC", true, null, null, null, null, null, null),
+            new TaskRecord("SRV01", "AB", "C", true, null, null, null, null, null, null)
+        };
+        var expected = new ExpectedTasksConfig([new("SRV01", "AB", "C", true)]);
+
+        var exception = Record.Exception(() => Analyzers.AnalyzeTasks(records, expected, new Thresholds()).ToList());
+
+        Assert.Null(exception);
     }
 
     [Fact] public void AnalyzeTasks_LastRunResultNonZero_ProducesHigh()

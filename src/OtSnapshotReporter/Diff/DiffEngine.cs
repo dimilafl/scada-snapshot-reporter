@@ -83,7 +83,7 @@ public static class DiffEngine
             ]);
 
     public static IEnumerable<Finding> DiffTasks(IReadOnlyCollection<TaskRecord> records, IReadOnlyCollection<TaskRecord> previous) =>
-        Diff(records, previous, x => Helpers.Key(x.Server, x.TaskPath + x.TaskName),
+        Diff(records, previous, x => Helpers.Key(x.Server, x.TaskPath, x.TaskName),
             old => Finding.Create("scheduled_tasks", old.Server, old.TaskPath + old.TaskName, Severity.Medium, "Task disappeared since previous snapshot"),
             current => Finding.Create("scheduled_tasks", current.Server, current.TaskPath + current.TaskName, Severity.Low, "New task detected since previous snapshot"),
             [

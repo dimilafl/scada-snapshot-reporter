@@ -70,6 +70,44 @@ public sealed class LoadingTests
     }
 
     [Fact]
+    public void LoadExpectedServicesConfig_RejectsMissingIdentityAndDuplicateEntries()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "ot-expected-services-" + Guid.NewGuid() + ".json");
+        try
+        {
+            File.WriteAllText(path, "{\"services\":[{\"server\":\"localhost\",\"name\":null,\"expected_status\":\"Running\"}]}");
+            var missingName = Assert.Throws<InvalidDataException>(() => Loading.LoadExpectedServicesConfig(path, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }));
+            Assert.Contains("name", missingName.Message);
+
+            File.WriteAllText(path, "{\"services\":[{\"server\":\"localhost\",\"name\":\"EventLog\",\"expected_status\":\"Running\"},{\"server\":\"LOCALHOST\",\"name\":\"eventlog\",\"expected_status\":\"Running\"}]}");
+            var duplicate = Assert.Throws<InvalidDataException>(() => Loading.LoadExpectedServicesConfig(path, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }));
+            Assert.Contains("duplicate", duplicate.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadExpectedSoftwareConfig_RejectsMissingVersion()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "ot-expected-software-" + Guid.NewGuid() + ".json");
+        try
+        {
+            File.WriteAllText(path, "{\"software\":[{\"server\":\"localhost\",\"name\":\"Demo\",\"expected_version\":null}]}");
+
+            var exception = Assert.Throws<InvalidDataException>(() => Loading.LoadExpectedSoftwareConfig(path, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }));
+
+            Assert.Contains("expected_version", exception.Message);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void LoadJson_FileNotFound_ReturnsNull()
     {
         var result = Loading.LoadJson<ServiceRecord>(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), new JsonSerializerOptions());
