@@ -43,13 +43,6 @@ if (!string.IsNullOrWhiteSpace(options.PreviousPath) && !Directory.Exists(option
     return 1;
 }
 
-var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
-var reportRoot = Path.Combine(options.OutputPath, runStamp);
-var rawOutput = Path.Combine(reportRoot, "raw");
-
-Directory.CreateDirectory(reportRoot);
-Directory.CreateDirectory(rawOutput);
-
 var json = new JsonSerializerOptions
 {
     PropertyNameCaseInsensitive = true,
@@ -57,11 +50,40 @@ var json = new JsonSerializerOptions
     Converters = { new JsonStringEnumConverter() }
 };
 
+var thresholdsPath = Path.Combine(options.ConfigPath, "thresholds.json");
+var thresholds = new Thresholds();
+if (File.Exists(thresholdsPath))
+{
+    thresholds = Loading.LoadJson<Thresholds>(thresholdsPath, json);
+    if (thresholds is null)
+    {
+        Console.Error.WriteLine($"Error: Config file is invalid: {thresholdsPath}");
+        return 1;
+    }
+}
+
+var serversPath = Path.Combine(options.ConfigPath, "servers.json");
+var configuredServers = new ServersConfig();
+if (File.Exists(serversPath))
+{
+    configuredServers = Loading.LoadJson<ServersConfig>(serversPath, json);
+    if (configuredServers is null)
+    {
+        Console.Error.WriteLine($"Error: Config file is invalid: {serversPath}");
+        return 1;
+    }
+}
+
+var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
+var reportRoot = Path.Combine(options.OutputPath, runStamp);
+var rawOutput = Path.Combine(reportRoot, "raw");
+
+Directory.CreateDirectory(reportRoot);
+Directory.CreateDirectory(rawOutput);
+
 var rawRoot = Loading.ResolveRawRoot(options.InputPath, options.OutputPath);
 Loading.CopyRawInputs(rawRoot, rawOutput);
 
-var thresholds = Loading.LoadJson<Thresholds>(Path.Combine(options.ConfigPath, "thresholds.json"), json) ?? new Thresholds();
-var configuredServers = Loading.LoadJson<ServersConfig>(Path.Combine(options.ConfigPath, "servers.json"), json) ?? new ServersConfig();
 var expectedServices = Loading.LoadJson<ExpectedServicesConfig>(Path.Combine(options.ConfigPath, "expected_services.json"), json) ?? new ExpectedServicesConfig();
 var expectedTasks = Loading.LoadJson<ExpectedTasksConfig>(Path.Combine(options.ConfigPath, "expected_tasks.json"), json) ?? new ExpectedTasksConfig();
 var expectedSoftware = Loading.LoadJson<ExpectedSoftwareConfig>(Path.Combine(options.ConfigPath, "expected_software.json"), json) ?? new ExpectedSoftwareConfig();

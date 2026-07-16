@@ -445,6 +445,50 @@ Test-Case "Engine rejects a missing previous snapshot path" {
     if (($output -join "`n") -notmatch 'Previous snapshot path does not exist') { throw "Expected missing previous snapshot error" }
 }
 
+Test-Case "Engine rejects a corrupt threshold config" {
+    $configDir = Join-Path $OutputRoot 'corrupt-threshold-config'
+    $reportDir = Join-Path $OutputRoot 'corrupt-threshold-report'
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    Copy-Item .\config\* -Destination $configDir -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $configDir 'thresholds.json') -Value 'not json' -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $configDir --output $reportDir 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected corrupt threshold config to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Config file is invalid.*thresholds.json') { throw "Expected corrupt threshold config error" }
+    if (Test-Path $reportDir) { throw "Corrupt threshold config created report output" }
+}
+
+Test-Case "Engine rejects a corrupt servers config" {
+    $configDir = Join-Path $OutputRoot 'corrupt-servers-config'
+    $reportDir = Join-Path $OutputRoot 'corrupt-servers-report'
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    Copy-Item .\config\* -Destination $configDir -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $configDir 'servers.json') -Value 'not json' -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $configDir --output $reportDir 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected corrupt servers config to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Config file is invalid.*servers.json') { throw "Expected corrupt servers config error" }
+    if (Test-Path $reportDir) { throw "Corrupt servers config created report output" }
+}
+
 Test-Case "Engine handles all raw JSON files missing" {
     $missingRawInput = Join-Path $OutputRoot 'missing-raw-input'
     $missingRawReport = Join-Path $OutputRoot 'missing-raw-report'
