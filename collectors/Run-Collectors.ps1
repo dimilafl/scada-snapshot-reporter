@@ -37,7 +37,12 @@ function Clear-CollectorOutput {
 
 $collectorOutputPath = $OutputPath
 if ($PerServer) {
-    $collectorOutputPath = Join-Path $OutputPath (Join-Path $env:COMPUTERNAME (Get-Date -Format 'yyyy-MM-dd_HHmmss'))
+    $stamp = Get-Date
+    do {
+        $candidate = Join-Path $OutputPath (Join-Path $env:COMPUTERNAME ($stamp.ToString('yyyy-MM-dd_HHmmss')))
+        $stamp = $stamp.AddSeconds(1)
+    } while (Test-Path -LiteralPath $candidate)
+    $collectorOutputPath = $candidate
 }
 if ($CleanOutput) {
     Clear-CollectorOutput -Path $collectorOutputPath

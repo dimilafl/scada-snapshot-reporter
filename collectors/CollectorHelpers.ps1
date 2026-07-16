@@ -227,6 +227,13 @@ function Invoke-PerServer {
         [int] $MaxRetries = 2
     )
 
+    if ($ServerTimeoutSeconds -lt 1) {
+        throw 'ServerTimeoutSeconds must be at least 1.'
+    }
+    if ($MaxRetries -lt 1) {
+        throw 'MaxRetries must be at least 1.'
+    }
+
     $results = New-Object System.Collections.Generic.List[object]
     $errors = New-Object System.Collections.Generic.List[object]
     $runTime = Get-Date -Format "yyyy-MM-ddTHH:mm:ss"

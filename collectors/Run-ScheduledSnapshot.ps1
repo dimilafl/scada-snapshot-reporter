@@ -18,6 +18,20 @@ if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     $OutputRoot = Join-Path $RepositoryRoot 'Output'
 }
 
+$RepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
+if (-not [System.IO.Path]::IsPathRooted($ConfigPath)) {
+    $ConfigPath = Join-Path $RepositoryRoot $ConfigPath
+}
+if (-not [System.IO.Path]::IsPathRooted($OutputRoot)) {
+    $OutputRoot = Join-Path $RepositoryRoot $OutputRoot
+}
+if (-not [System.IO.Path]::IsPathRooted($ReportExecutablePath)) {
+    $ReportExecutablePath = Join-Path $RepositoryRoot $ReportExecutablePath
+}
+$ConfigPath = [System.IO.Path]::GetFullPath($ConfigPath)
+$OutputRoot = [System.IO.Path]::GetFullPath($OutputRoot)
+$ReportExecutablePath = [System.IO.Path]::GetFullPath($ReportExecutablePath)
+
 function Get-LatestReportFolder {
     param(
         [Parameter(Mandatory = $true)]
@@ -38,8 +52,26 @@ function Get-LatestReportFolder {
         Select-Object -First 1
 }
 
-$stamp = Get-Date -Format 'yyyy-MM-dd_HHmmss'
-$collectionPath = Join-Path $OutputRoot "collection_$stamp"
+function New-AvailableCollectionPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $OutputRoot
+    )
+
+    $stamp = Get-Date
+    do {
+        $candidate = Join-Path $OutputRoot ("collection_" + $stamp.ToString('yyyy-MM-dd_HHmmss'))
+        $stamp = $stamp.AddSeconds(1)
+    } while (Test-Path -LiteralPath $candidate)
+
+    return $candidate
+}
+
+if (-not (Test-Path -LiteralPath $ReportExecutablePath -PathType Leaf)) {
+    throw "Report executable was not found: $ReportExecutablePath"
+}
+
+$collectionPath = New-AvailableCollectionPath -OutputRoot $OutputRoot
 New-Item -Path $collectionPath -ItemType Directory -Force | Out-Null
 
 $previous = Get-LatestReportFolder -OutputRoot $OutputRoot

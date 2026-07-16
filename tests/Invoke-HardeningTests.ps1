@@ -87,6 +87,15 @@ Test-Case "GUI passes the latest report to drift comparison" {
     Assert-Contains $mainForm 'var previousReport = LatestReportFolder();'
     Assert-Contains $mainForm 'EngineArgs(inputPath, previousReport)'
     Assert-Contains $mainForm 'yield return "--previous";'
+    Assert-Contains $mainForm 'Directory.Exists(Path.Combine(x, "raw"))'
+    Assert-Contains $mainForm 'missing.Add("servers config")'
+}
+
+Test-Case "Scheduled wrapper reserves unique collection paths" {
+    $scheduled = Get-Content .\collectors\Run-ScheduledSnapshot.ps1 -Raw
+    Assert-Contains $scheduled 'function New-AvailableCollectionPath'
+    Assert-Contains $scheduled '$collectionPath = New-AvailableCollectionPath -OutputRoot $OutputRoot'
+    Assert-Contains $scheduled 'Report executable was not found'
 }
 
 Test-Case "Smoke tests pass" {
@@ -291,7 +300,7 @@ exit 0
 '@ -Encoding UTF8
     try {
         & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scheduledCollectors 'Run-ScheduledSnapshot.ps1') `
-            -OutputRoot $scheduledReports -ReportExecutablePath (Join-Path $scheduledRoot 'Fake-Report.ps1') 2>$null
+            -RepositoryRoot $scheduledRoot -OutputRoot $scheduledReports -ReportExecutablePath 'Fake-Report.ps1' 2>$null
         if ($LASTEXITCODE -ne 0) { throw "Scheduled wrapper failed with exit code $LASTEXITCODE" }
     }
     finally {
@@ -852,6 +861,27 @@ Test-Case "Invoke-PerServer retries timeouts and records final error" {
     if (-not (@($errors) | Where-Object { $_.error -like '*2 attempts*' -and $_.run })) {
         throw "Timeout error did not include retry count and run stamp"
     }
+}
+
+Test-Case "Invoke-PerServer rejects invalid retry limits" {
+    . .\collectors\CollectorHelpers.ps1
+    $caughtTimeout = $false
+    try {
+        Invoke-PerServer -Servers @('server') -OutputPath (Join-Path $OutputRoot 'invalid-timeout') -ServerTimeoutSeconds 0 -ScriptBlock { param($server) $server } | Out-Null
+    }
+    catch {
+        $caughtTimeout = $_.Exception.Message -match 'ServerTimeoutSeconds must be at least 1'
+    }
+    if (-not $caughtTimeout) { throw "Invalid server timeout was accepted" }
+
+    $caughtRetries = $false
+    try {
+        Invoke-PerServer -Servers @('server') -OutputPath (Join-Path $OutputRoot 'invalid-retries') -MaxRetries 0 -ScriptBlock { param($server) $server } | Out-Null
+    }
+    catch {
+        $caughtRetries = $_.Exception.Message -match 'MaxRetries must be at least 1'
+    }
+    if (-not $caughtRetries) { throw "Invalid retry count was accepted" }
 }
 
 Test-Case "Backup collector bounds recursive file enumeration" {

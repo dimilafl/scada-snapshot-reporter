@@ -15,6 +15,8 @@ As of 2026-07-16, the public tree has also addressed the following follow-on ris
 - `servers.json` is validated before report allocation: names are trimmed and deduplicated, while missing, scalar, null, empty, and all-blank server arrays fail with actionable errors.
 - C# report writes use unique temporary and backup names, replace existing files atomically, and remove only stale generated artifacts. The GUI uses the same pattern for settings and `servers.json`.
 - GUI defaults discover the repository layout from `config/servers.json` and the collector runner, then search common engine build and publish locations. Existing saved settings and manual path controls remain authoritative.
+- Scheduled runs resolve relative paths from `RepositoryRoot`, reject a missing report executable before collection, and reserve a unique `collection_` folder even when two runs begin in the same second. Per-server collection folders use the same collision-resistant behavior.
+- The GUI requires both `servers.json` and a report `raw` folder when selecting operational prerequisites and the previous report used for drift comparison. Per-server collection rejects non-positive timeout and retry limits before starting jobs.
 
 The remaining design debt below is intentionally scoped: module registration and versioned JSON schemas would reduce future maintenance cost, but the current explicit orchestration remains behaviorally covered by the hardening suite.
 

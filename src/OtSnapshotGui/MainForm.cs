@@ -398,6 +398,7 @@ internal sealed class MainForm : Form
         if (!File.Exists(CollectorScript())) missing.Add("collector script");
         if (!File.Exists(_engineExe.Text)) missing.Add("engine executable");
         if (!Directory.Exists(_configPath.Text)) missing.Add("config path");
+        else if (!File.Exists(ServersPath())) missing.Add("servers config");
         SetStatus(missing.Count == 0 ? "Ready" : "Missing " + string.Join(", ", missing));
     }
 
@@ -479,7 +480,7 @@ internal sealed class MainForm : Form
         try
         {
             return Directory.GetDirectories(_outputRoot.Text)
-                .Where(x => File.Exists(Path.Combine(x, "index.html")))
+                .Where(x => File.Exists(Path.Combine(x, "index.html")) && Directory.Exists(Path.Combine(x, "raw")))
                 .OrderByDescending(x => Path.GetFileName(x), StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault();
         }
