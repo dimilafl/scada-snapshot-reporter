@@ -13,6 +13,19 @@ public sealed class InfrastructureTests
     [Fact] public void ParseSeverity_Critical_ReturnsCritical() => Assert.Equal(Severity.Critical, Helpers.ParseSeverity("Critical", Severity.Info));
     [Fact] public void ParseSeverity_Unknown_ReturnsInfo() => Assert.Equal(Severity.Info, Helpers.ParseSeverity("nope", Severity.Info));
 
+    [Fact] public void TryParseTimestamp_Iso8601_IsCultureIndependent()
+    {
+        Assert.True(Helpers.TryParseTimestamp("2026-06-03T06:00:00Z", out var parsed));
+        Assert.Equal(2026, parsed.Year);
+        Assert.Equal(6, parsed.Month);
+        Assert.Equal(3, parsed.Day);
+    }
+
+    [Fact] public void TryParseTimestamp_InvalidValue_ReturnsFalse()
+    {
+        Assert.False(Helpers.TryParseTimestamp("not-a-timestamp", out _));
+    }
+
     [Fact] public void LoadJson_ValidFile_ReturnsDeserialized()
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");

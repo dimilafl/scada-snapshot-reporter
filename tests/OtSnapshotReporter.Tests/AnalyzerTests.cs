@@ -71,6 +71,19 @@ public sealed class AnalyzerTests
         Assert.Contains(Analyzers.AnalyzeTasks([task], new ExpectedTasksConfig(), new Thresholds()), x => x.Message.Contains("Last task result"));
     }
 
+    [Fact] public void AnalyzeTasks_UsesExplicitEvaluationTimeForStaleness()
+    {
+        var task = new TaskRecord("SRV01", "\\Ops\\", "Export", true, "Ready", "2026-06-01T00:00:00", 0, null, "SYSTEM", "cmd.exe");
+
+        var findings = Analyzers.AnalyzeTasks(
+            [task],
+            new ExpectedTasksConfig(),
+            new Thresholds { TaskNotRunHoursWarning = 24 },
+            new DateTime(2026, 6, 3, 0, 0, 0)).ToList();
+
+        Assert.Contains(findings, x => x.Message.Contains("Task has not run"));
+    }
+
     [Fact] public void AnalyzeUptime_UnexpectedReboot_ProducesHigh()
     {
         var previous = new PreviousSnapshot([], [], [], [new("SRV01", "2026-01-01T01:00:00", 1)], [], [], [], [], []);

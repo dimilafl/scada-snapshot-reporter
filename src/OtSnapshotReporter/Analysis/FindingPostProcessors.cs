@@ -57,7 +57,7 @@ public static class FindingPostProcessors
 
     private static bool Applies(MaintenanceWindow window, Finding finding, DateTime timestamp)
     {
-        if (!DateTime.TryParse(window.Start, out var start) || !DateTime.TryParse(window.End, out var end))
+        if (!Helpers.TryParseTimestamp(window.Start, out var start) || !Helpers.TryParseTimestamp(window.End, out var end))
         {
             return false;
         }

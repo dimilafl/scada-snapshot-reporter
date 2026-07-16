@@ -49,9 +49,10 @@ public static class Analyzers
         }
     }
 
-    public static IEnumerable<Finding> AnalyzeTasks(IEnumerable<TaskRecord> records, ExpectedTasksConfig config, Thresholds thresholds)
+    public static IEnumerable<Finding> AnalyzeTasks(IEnumerable<TaskRecord> records, ExpectedTasksConfig config, Thresholds thresholds, DateTime? evaluationTime = null)
     {
         var taskRecords = records.ToList();
+        var now = evaluationTime ?? DateTime.Now;
         foreach (var task in taskRecords)
         {
             if (task.LastTaskResult.HasValue && task.LastTaskResult.Value != 0)
@@ -59,7 +60,7 @@ public static class Analyzers
                 yield return Finding.Create("scheduled_tasks", task.Server, task.TaskPath + task.TaskName, Severity.High, $"Last task result was {task.LastTaskResult}");
             }
 
-            if (DateTime.TryParse(task.LastRunTime, out var lastRun) && DateTime.Now.Subtract(lastRun).TotalHours > thresholds.TaskNotRunHoursWarning)
+            if (Helpers.TryParseTimestamp(task.LastRunTime, out var lastRun) && now.Subtract(lastRun).TotalHours > thresholds.TaskNotRunHoursWarning)
             {
                 yield return Finding.Create("scheduled_tasks", task.Server, task.TaskPath + task.TaskName, Severity.Medium, $"Task has not run since {task.LastRunTime}");
             }
@@ -92,8 +93,8 @@ public static class Analyzers
         foreach (var record in records)
         {
             if (previousByServer.TryGetValue(record.Server, out var old) &&
-                DateTime.TryParse(record.LastBootTime, out var currentBoot) &&
-                DateTime.TryParse(old.LastBootTime, out var oldBoot) &&
+                Helpers.TryParseTimestamp(record.LastBootTime, out var currentBoot) &&
+                Helpers.TryParseTimestamp(old.LastBootTime, out var oldBoot) &&
                 currentBoot > oldBoot)
             {
                 yield return Finding.Create("uptime", record.Server, "LastBootTime", Severity.High, $"Server rebooted since previous snapshot; current boot {record.LastBootTime}");
