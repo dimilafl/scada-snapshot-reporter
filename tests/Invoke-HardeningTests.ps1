@@ -405,6 +405,44 @@ Test-Case "Drift report detects backup staleness" {
     Assert-Contains $csv 'hours old'
 }
 
+Test-Case "Drift report detects Phase 3 module changes" {
+    $phase3Config = Join-Path $OutputRoot 'phase3-config'
+    $phase3Input = Join-Path $OutputRoot 'phase3-current'
+    $phase3Previous = Join-Path $OutputRoot 'phase3-previous'
+    $phase3Report = Join-Path $OutputRoot 'phase3-report'
+    New-Item -ItemType Directory -Path $phase3Config, (Join-Path $phase3Input 'raw'), (Join-Path $phase3Previous 'raw') -Force | Out-Null
+    Copy-Item .\config\* -Destination $phase3Config -Recurse -Force
+
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; dsnName = 'Demo'; driverName = 'Driver'; type = 'System'; architecture = '64-bit'; connectionPassed = $true }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Previous 'raw\odbc_dsn_tests.json') -Encoding UTF8
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; dsnName = 'Demo'; driverName = 'Driver'; type = 'System'; architecture = '64-bit'; connectionPassed = $false }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Input 'raw\odbc_dsn_tests.json') -Encoding UTF8
+
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; subject = 'CN=Demo'; issuer = 'CA'; thumbprint = 'ABC'; notBefore = '2026-01-01'; notAfter = '2027-01-01'; daysUntilExpiry = 100; store = 'My' }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Previous 'raw\certificates.json') -Encoding UTF8
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; subject = 'CN=Demo'; issuer = 'CA'; thumbprint = 'ABC'; notBefore = '2026-01-01'; notAfter = '2027-02-01'; daysUntilExpiry = 100; store = 'My' }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Input 'raw\certificates.json') -Encoding UTF8
+
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; instance = '.'; jobName = 'Nightly'; enabled = $true; lastRunStatus = 1; jobOwner = 'old-owner' }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Previous 'raw\sql_agent_jobs.json') -Encoding UTF8
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; instance = '.'; jobName = 'Nightly'; enabled = $true; lastRunStatus = 0; jobOwner = 'new-owner'; lastRunMessage = 'Failed' }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Input 'raw\sql_agent_jobs.json') -Encoding UTF8
+
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; instance = '.'; reportPath = '/Reports/Daily'; subscriptionDescription = 'Daily'; owner = 'operator'; ownerExists = $true; lastStatus = 'Done'; enabled = $true }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Previous 'raw\ssrs_subscriptions.json') -Encoding UTF8
+    ConvertTo-Json -InputObject @(@{ server = 'localhost'; instance = '.'; reportPath = '/Reports/Daily'; subscriptionDescription = 'Daily'; owner = 'disabled'; ownerExists = $false; lastStatus = 'Failed'; enabled = $true }) -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $phase3Input 'raw\ssrs_subscriptions.json') -Encoding UTF8
+
+    dotnet run --project .\src\OtSnapshotReporter -- --input $phase3Input --config $phase3Config --output $phase3Report --previous $phase3Previous | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Engine failed while checking Phase 3 drift" }
+
+    $csv = Get-Content (Join-Path (Get-LatestReport $phase3Report) 'exceptions.csv') -Raw
+    Assert-Contains $csv 'ODBC DSN connection changed from passed to failed'
+    Assert-Contains $csv 'Certificate expiration changed'
+    Assert-Contains $csv 'SQL Agent job last run status changed'
+    Assert-Contains $csv 'SSRS subscription owner availability changed'
+}
+
 $perServerRun = Join-Path $OutputRoot 'per-server'
 Test-Case "Per-server collection runs" {
     .\collectors\Run-Collectors.ps1 -OutputPath $perServerRun -PerServer | Out-Null

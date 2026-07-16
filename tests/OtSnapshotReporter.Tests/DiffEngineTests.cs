@@ -35,4 +35,52 @@ public sealed class DiffEngineTests
         var previous = new TaskRecord("SRV01", "\\", "A", true, null, null, null, null, "A", "old");
         Assert.Equal(3, DiffEngine.DiffTasks([current], [previous]).Count());
     }
+
+    [Fact]
+    public void DiffOdbcDsns_ConnectionFailure_ProducesHighFinding()
+    {
+        var current = new OdbcDsnRecord("SRV01", "Historian", "New Driver", "System", "64-bit", null, null, false);
+        var previous = new OdbcDsnRecord("SRV01", "Historian", "New Driver", "System", "64-bit", null, null, true);
+
+        var finding = Assert.Single(DiffEngine.DiffOdbcDsns([current], [previous]));
+
+        Assert.Equal(Severity.High, finding.Severity);
+        Assert.Contains("passed to failed", finding.Message);
+    }
+
+    [Fact]
+    public void DiffCertificates_ExpirationChange_ProducesMediumFinding()
+    {
+        var current = new CertificateRecord("SRV01", "CN=Demo", "Demo CA", "abc", "2026-01-01", "2027-01-01", 100, "My");
+        var previous = current with { NotAfter = "2026-12-01" };
+
+        var finding = Assert.Single(DiffEngine.DiffCertificates([current], [previous]));
+
+        Assert.Equal(Severity.Medium, finding.Severity);
+        Assert.Contains("expiration changed", finding.Message);
+    }
+
+    [Fact]
+    public void DiffSqlAgentJobs_StatusChange_ProducesFinding()
+    {
+        var current = new SqlAgentJobRecord("SRV01", ".", "Nightly", true, "20260716", "010000", 0, 4, "Failed", null, null, "job-owner-new");
+        var previous = current with { LastRunStatus = 1, JobOwner = "job-owner-old" };
+
+        var findings = DiffEngine.DiffSqlAgentJobs([current], [previous]).ToList();
+
+        Assert.Contains(findings, x => x.Severity == Severity.High && x.Message.Contains("last run status changed"));
+        Assert.Contains(findings, x => x.Severity == Severity.Low && x.Message.Contains("owner changed"));
+    }
+
+    [Fact]
+    public void DiffSsrsSubscriptions_OwnerLoss_ProducesHighFinding()
+    {
+        var current = new SsrsSubscriptionRecord("SRV01", ".", "/Reports/Daily", "Daily", "disabled-user", false, "Done", null, true);
+        var previous = current with { Owner = "operator", OwnerExists = true };
+
+        var finding = Assert.Single(DiffEngine.DiffSsrsSubscriptions([current], [previous]));
+
+        Assert.Equal(Severity.High, finding.Severity);
+        Assert.Contains("owner availability changed", finding.Message);
+    }
 }

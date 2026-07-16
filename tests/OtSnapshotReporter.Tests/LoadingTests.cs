@@ -193,4 +193,29 @@ public sealed class LoadingTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public void LoadPreviousSnapshot_LoadsPhase3Modules()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-previous-phase3-" + Guid.NewGuid());
+        try
+        {
+            Directory.CreateDirectory(root);
+            File.WriteAllText(Path.Combine(root, "odbc_dsn_tests.json"), "[{\"server\":\"SRV01\",\"dsnName\":\"Demo\",\"driverName\":\"Driver\",\"type\":\"System\",\"architecture\":\"64-bit\",\"connectionPassed\":true}]");
+            File.WriteAllText(Path.Combine(root, "certificates.json"), "[{\"server\":\"SRV01\",\"subject\":\"CN=Demo\",\"issuer\":\"CA\",\"thumbprint\":\"abc\",\"notBefore\":\"2026\",\"notAfter\":\"2027\",\"daysUntilExpiry\":100,\"store\":\"My\"}]");
+            File.WriteAllText(Path.Combine(root, "sql_agent_jobs.json"), "[{\"server\":\"SRV01\",\"instance\":\".\",\"jobName\":\"Nightly\",\"enabled\":true,\"lastRunStatus\":1}]");
+            File.WriteAllText(Path.Combine(root, "ssrs_subscriptions.json"), "[{\"server\":\"SRV01\",\"instance\":\".\",\"reportPath\":\"/Reports/Daily\",\"subscriptionDescription\":\"Daily\",\"owner\":\"operator\",\"ownerExists\":true,\"lastStatus\":\"Done\",\"enabled\":true}]");
+
+            var previous = Loading.LoadPreviousSnapshot(root, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Assert.Single(previous.OdbcDsns);
+            Assert.Single(previous.Certificates);
+            Assert.Single(previous.SqlAgentJobs);
+            Assert.Single(previous.SsrsSubscriptions);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

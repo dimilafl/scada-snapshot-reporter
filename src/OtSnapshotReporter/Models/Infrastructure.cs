@@ -19,7 +19,18 @@ public sealed record PreviousSnapshot(
     IReadOnlyCollection<FileShareRecord> FileShares,
     IReadOnlyCollection<BackupFreshnessRecord> Backups)
 {
-    public static PreviousSnapshot Empty { get; } = new([], [], [], [], [], [], [], [], []);
+    public IReadOnlyCollection<OdbcDsnRecord> OdbcDsns { get; init; } = [];
+    public IReadOnlyCollection<CertificateRecord> Certificates { get; init; } = [];
+    public IReadOnlyCollection<SqlAgentJobRecord> SqlAgentJobs { get; init; } = [];
+    public IReadOnlyCollection<SsrsSubscriptionRecord> SsrsSubscriptions { get; init; } = [];
+
+    public static PreviousSnapshot Empty { get; } = new([], [], [], [], [], [], [], [], [])
+    {
+        OdbcDsns = [],
+        Certificates = [],
+        SqlAgentJobs = [],
+        SsrsSubscriptions = []
+    };
 }
 
 public sealed record ModuleDescriptor(string ModuleKey, string DisplayName, string HtmlFile, string RawJsonFile, string? ExpectedConfigFile, bool HasMatrixLayout);

@@ -123,4 +123,64 @@ public static class DiffEngine
                 new((current, old) => old.Exists && !current.Exists ? Finding.Create("backups", current.Server, current.Name ?? current.Path, Severity.High, "Backup/export path disappeared since previous snapshot") : null),
                 new((current, old) => current.AgeHours.HasValue && old.AgeHours.HasValue && current.AgeHours.Value > old.AgeHours.Value * 3 ? Finding.Create("backups", current.Server, current.Name ?? current.Path, Severity.Medium, $"Newest file age increased from {old.AgeHours:0.#}h to {current.AgeHours:0.#}h") : null)
             ]);
+
+    public static IEnumerable<Finding> DiffOdbcDsns(IReadOnlyCollection<OdbcDsnRecord> records, IReadOnlyCollection<OdbcDsnRecord> previous) =>
+        Diff(records, previous, x => Helpers.Key(x.Server, x.DsnName, x.Type, x.Architecture),
+            old => Finding.Create("odbc_dsns", old.Server, old.DsnName, Severity.Medium, "ODBC DSN disappeared since previous snapshot"),
+            _ => null,
+            [
+                new((current, old) => current.ConnectionPassed == old.ConnectionPassed
+                    ? null
+                    : current.ConnectionPassed
+                        ? Finding.Create("odbc_dsns", current.Server, current.DsnName, Severity.Medium, "ODBC DSN connection recovered since previous snapshot")
+                        : Finding.Create("odbc_dsns", current.Server, current.DsnName, Severity.High, "ODBC DSN connection changed from passed to failed")),
+                new((current, old) => !Helpers.EqualsText(current.DriverName, old.DriverName)
+                    ? Finding.Create("odbc_dsns", current.Server, current.DsnName, Severity.Medium, $"ODBC DSN driver changed from {old.DriverName} to {current.DriverName}")
+                    : null)
+            ]);
+
+    public static IEnumerable<Finding> DiffCertificates(IReadOnlyCollection<CertificateRecord> records, IReadOnlyCollection<CertificateRecord> previous) =>
+        Diff(records, previous, x => Helpers.Key(x.Server, x.Thumbprint, x.Subject),
+            old => Finding.Create("certificates", old.Server, old.Subject, Severity.Medium, "Certificate disappeared since previous snapshot"),
+            _ => null,
+            [
+                new((current, old) => !Helpers.EqualsText(current.NotAfter, old.NotAfter)
+                    ? Finding.Create("certificates", current.Server, current.Subject, Severity.Medium, $"Certificate expiration changed from {old.NotAfter} to {current.NotAfter}")
+                    : null)
+            ]);
+
+    public static IEnumerable<Finding> DiffSqlAgentJobs(IReadOnlyCollection<SqlAgentJobRecord> records, IReadOnlyCollection<SqlAgentJobRecord> previous) =>
+        Diff(records, previous, x => Helpers.Key(x.Server, x.Instance, x.JobName),
+            old => Finding.Create("sql_agent_jobs", old.Server, $"{old.Instance}\\{old.JobName}", Severity.Medium, "SQL Agent job disappeared since previous snapshot"),
+            _ => null,
+            [
+                new((current, old) => current.Enabled != old.Enabled
+                    ? Finding.Create("sql_agent_jobs", current.Server, $"{current.Instance}\\{current.JobName}", Severity.High, $"SQL Agent job enabled state changed from {old.Enabled} to {current.Enabled}")
+                    : null),
+                new((current, old) => current.LastRunStatus != old.LastRunStatus
+                    ? Finding.Create("sql_agent_jobs", current.Server, $"{current.Instance}\\{current.JobName}", current.LastRunStatus == 0 ? Severity.High : Severity.Medium, $"SQL Agent job last run status changed from {old.LastRunStatus?.ToString() ?? "unknown"} to {current.LastRunStatus?.ToString() ?? "unknown"}")
+                    : null),
+                new((current, old) => !Helpers.EqualsText(current.JobOwner, old.JobOwner)
+                    ? Finding.Create("sql_agent_jobs", current.Server, $"{current.Instance}\\{current.JobName}", Severity.Low, $"SQL Agent job owner changed from {old.JobOwner} to {current.JobOwner}")
+                    : null)
+            ]);
+
+    public static IEnumerable<Finding> DiffSsrsSubscriptions(IReadOnlyCollection<SsrsSubscriptionRecord> records, IReadOnlyCollection<SsrsSubscriptionRecord> previous) =>
+        Diff(records, previous, x => Helpers.Key(x.Server, x.Instance, x.ReportPath, x.SubscriptionDescription),
+            old => Finding.Create("ssrs_subscriptions", old.Server, $"{old.Instance}\\{old.ReportPath}", Severity.Medium, "SSRS subscription disappeared since previous snapshot"),
+            _ => null,
+            [
+                new((current, old) => current.Enabled != old.Enabled
+                    ? Finding.Create("ssrs_subscriptions", current.Server, $"{current.Instance}\\{current.ReportPath}", Severity.High, $"SSRS subscription enabled state changed from {old.Enabled} to {current.Enabled}")
+                    : null),
+                new((current, old) => current.OwnerExists != old.OwnerExists
+                    ? Finding.Create("ssrs_subscriptions", current.Server, $"{current.Instance}\\{current.ReportPath}", current.OwnerExists ? Severity.Medium : Severity.High, $"SSRS subscription owner availability changed from {old.OwnerExists} to {current.OwnerExists}")
+                    : null),
+                new((current, old) => !Helpers.EqualsText(current.LastStatus, old.LastStatus)
+                    ? Finding.Create("ssrs_subscriptions", current.Server, $"{current.Instance}\\{current.ReportPath}", Severity.Medium, $"SSRS subscription status changed from {old.LastStatus} to {current.LastStatus}")
+                    : null),
+                new((current, old) => current.OwnerExists && old.OwnerExists && !Helpers.EqualsText(current.Owner, old.Owner)
+                    ? Finding.Create("ssrs_subscriptions", current.Server, $"{current.Instance}\\{current.ReportPath}", Severity.Low, $"SSRS subscription owner changed from {old.Owner} to {current.Owner}")
+                    : null)
+            ]);
 }

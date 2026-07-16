@@ -215,6 +215,10 @@ findings.AddRange(DiffEngine.DiffDrivers(drivers, previous.Drivers));
 findings.AddRange(DiffEngine.DiffEventLogs(eventLogs, previous.EventLogs));
 findings.AddRange(DiffEngine.DiffFileShares(fileShares, previous.FileShares));
 findings.AddRange(DiffEngine.DiffBackups(backups, previous.Backups));
+findings.AddRange(DiffEngine.DiffOdbcDsns(odbcDsns, previous.OdbcDsns));
+findings.AddRange(DiffEngine.DiffCertificates(certificates, previous.Certificates));
+findings.AddRange(DiffEngine.DiffSqlAgentJobs(sqlAgentJobs, previous.SqlAgentJobs));
+findings.AddRange(DiffEngine.DiffSsrsSubscriptions(ssrsSubscriptions, previous.SsrsSubscriptions));
 findings = FindingPostProcessors.AddCorrelationFindings(findings);
 findings = FindingPostProcessors.ApplyMaintenanceWindows(findings, maintenanceWindows, DateTime.Now);
 

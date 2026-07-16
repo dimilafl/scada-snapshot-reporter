@@ -227,7 +227,13 @@ public static class Loading
                 LoadRecords<DriverRecord>(Path.Combine(raw, "odbc_oledb.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Type) && !string.IsNullOrWhiteSpace(x.Name) && !string.IsNullOrWhiteSpace(x.Architecture), "previous driver"),
                 LoadRecords<EventLogSummaryRecord>(Path.Combine(raw, "event_log_summary.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.LogName) && !string.IsNullOrWhiteSpace(x.Source), "previous event log"),
                 LoadRecords<FileShareRecord>(Path.Combine(raw, "file_shares.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "previous file-share"),
-                LoadRecords<BackupFreshnessRecord>(Path.Combine(raw, "backup_freshness.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "previous backup"));
+                LoadRecords<BackupFreshnessRecord>(Path.Combine(raw, "backup_freshness.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "previous backup"))
+            {
+                OdbcDsns = LoadRecords<OdbcDsnRecord>(Path.Combine(raw, "odbc_dsn_tests.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.DsnName), "previous ODBC DSN"),
+                Certificates = LoadRecords<CertificateRecord>(Path.Combine(raw, "certificates.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Subject), "previous certificate"),
+                SqlAgentJobs = LoadRecords<SqlAgentJobRecord>(Path.Combine(raw, "sql_agent_jobs.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.JobName), "previous SQL Agent job"),
+                SsrsSubscriptions = LoadRecords<SsrsSubscriptionRecord>(Path.Combine(raw, "ssrs_subscriptions.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.ReportPath), "previous SSRS subscription")
+            };
         }
         finally
         {
