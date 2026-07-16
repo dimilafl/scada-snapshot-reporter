@@ -793,6 +793,28 @@ Test-Case "Engine rejects an optional config with a null collection" {
     if (Test-Path $reportDir) { throw "Null maintenance config created report output" }
 }
 
+Test-Case "Engine rejects scalar entries in optional config arrays" {
+    $configDir = Join-Path $OutputRoot 'scalar-maintenance-entry-config'
+    $reportDir = Join-Path $OutputRoot 'scalar-maintenance-entry-report'
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    Copy-Item .\config\* -Destination $configDir -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $configDir 'maintenance_windows.json') -Value '{"windows":[null]}' -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $configDir --output $reportDir 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected scalar maintenance entry to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'only objects.*windows') { throw "Expected scalar maintenance entry error" }
+    if (Test-Path $reportDir) { throw "Scalar maintenance entry created report output" }
+}
+
 Test-Case "Engine handles all raw JSON files missing" {
     $missingRawInput = Join-Path $OutputRoot 'missing-raw-input'
     $missingRawReport = Join-Path $OutputRoot 'missing-raw-report'

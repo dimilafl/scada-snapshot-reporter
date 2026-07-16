@@ -51,6 +51,11 @@ public static class Loading
                 throw new InvalidDataException($"Config file must contain a '{collectionPropertyName}' array: {path}");
             }
 
+            if (property.Value.EnumerateArray().Any(item => item.ValueKind != JsonValueKind.Object))
+            {
+                throw new InvalidDataException($"Config file '{path}' must contain only objects in '{collectionPropertyName}'.");
+            }
+
             return document.RootElement.Deserialize<T>(options)
                 ?? throw new InvalidDataException($"Config file is invalid: {path}");
         }

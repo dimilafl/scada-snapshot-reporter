@@ -40,6 +40,10 @@ public sealed class LoadingTests
             File.WriteAllText(path, "{\"tasks\":\"invalid\"}");
             var scalarException = Assert.Throws<InvalidDataException>(() => Loading.LoadConfig<ExpectedTasksConfig>(path, new JsonSerializerOptions(), "tasks"));
             Assert.Contains("array", scalarException.Message);
+
+            File.WriteAllText(path, "{\"tasks\":[null]}");
+            var itemException = Assert.Throws<InvalidDataException>(() => Loading.LoadConfig<ExpectedTasksConfig>(path, new JsonSerializerOptions(), "tasks"));
+            Assert.Contains("only objects", itemException.Message);
         }
         finally
         {
