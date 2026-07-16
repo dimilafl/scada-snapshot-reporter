@@ -58,6 +58,18 @@ public sealed class DiffEngineTests
     }
 
     [Fact]
+    public void DiffOdbcDsns_NewDsn_ProducesMediumFinding()
+    {
+        var existing = new OdbcDsnRecord("SRV01", "Existing", "Driver", "System", "64-bit", null, null, true);
+        var current = new OdbcDsnRecord("SRV01", "Historian", "Driver", "System", "64-bit", null, null, true);
+
+        var finding = Assert.Single(DiffEngine.DiffOdbcDsns([existing, current], [existing]));
+
+        Assert.Equal(Severity.Medium, finding.Severity);
+        Assert.Contains("New ODBC DSN", finding.Message);
+    }
+
+    [Fact]
     public void DiffCertificates_ExpirationChange_ProducesMediumFinding()
     {
         var current = new CertificateRecord("SRV01", "CN=Demo", "Demo CA", "abc", "2026-01-01", "2027-01-01", 100, "My");
@@ -75,9 +87,22 @@ public sealed class DiffEngineTests
         var current = new CertificateRecord("SRV01", "CN=Demo", "Demo CA", "abc", "2026-01-01", "2027-01-01", 100, "My");
         var previous = current with { Store = "Root" };
 
-        var finding = Assert.Single(DiffEngine.DiffCertificates([current], [previous]));
+        var findings = DiffEngine.DiffCertificates([current], [previous]).ToList();
 
-        Assert.Contains("disappeared", finding.Message);
+        Assert.Contains(findings, x => x.Message.Contains("disappeared"));
+        Assert.Contains(findings, x => x.Message.Contains("New certificate"));
+    }
+
+    [Fact]
+    public void DiffCertificates_NewCertificate_ProducesLowFinding()
+    {
+        var existing = new CertificateRecord("SRV01", "CN=Existing", "Demo CA", "existing", "2026-01-01", "2027-01-01", 100, "My");
+        var current = new CertificateRecord("SRV01", "CN=New", "Demo CA", "new", "2026-01-01", "2027-01-01", 100, "My");
+
+        var finding = Assert.Single(DiffEngine.DiffCertificates([existing, current], [existing]));
+
+        Assert.Equal(Severity.Low, finding.Severity);
+        Assert.Contains("New certificate", finding.Message);
     }
 
     [Fact]
@@ -93,6 +118,18 @@ public sealed class DiffEngineTests
     }
 
     [Fact]
+    public void DiffSqlAgentJobs_NewJob_ProducesMediumFinding()
+    {
+        var existing = new SqlAgentJobRecord("SRV01", ".", "Existing", true, null, null, 1, null, null, null, null, "owner");
+        var current = new SqlAgentJobRecord("SRV01", ".", "Nightly", true, null, null, 1, null, null, null, null, "owner");
+
+        var finding = Assert.Single(DiffEngine.DiffSqlAgentJobs([existing, current], [existing]));
+
+        Assert.Equal(Severity.Medium, finding.Severity);
+        Assert.Contains("New SQL Agent job", finding.Message);
+    }
+
+    [Fact]
     public void DiffSsrsSubscriptions_OwnerLoss_ProducesHighFinding()
     {
         var current = new SsrsSubscriptionRecord("SRV01", ".", "/Reports/Daily", "Daily", "disabled-user", false, "Done", null, true);
@@ -102,5 +139,17 @@ public sealed class DiffEngineTests
 
         Assert.Equal(Severity.High, finding.Severity);
         Assert.Contains("owner availability changed", finding.Message);
+    }
+
+    [Fact]
+    public void DiffSsrsSubscriptions_NewSubscription_ProducesMediumFinding()
+    {
+        var existing = new SsrsSubscriptionRecord("SRV01", ".", "/Reports/Existing", "Existing", "operator", true, "Done", null, true);
+        var current = new SsrsSubscriptionRecord("SRV01", ".", "/Reports/Daily", "Daily", "operator", true, "Done", null, true);
+
+        var finding = Assert.Single(DiffEngine.DiffSsrsSubscriptions([existing, current], [existing]));
+
+        Assert.Equal(Severity.Medium, finding.Severity);
+        Assert.Contains("New SSRS subscription", finding.Message);
     }
 }

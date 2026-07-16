@@ -127,7 +127,7 @@ public static class DiffEngine
     public static IEnumerable<Finding> DiffOdbcDsns(IReadOnlyCollection<OdbcDsnRecord> records, IReadOnlyCollection<OdbcDsnRecord> previous) =>
         Diff(records, previous, x => Helpers.Key(x.Server, x.DsnName, x.Type, x.Architecture),
             old => Finding.Create("odbc_dsns", old.Server, old.DsnName, Severity.Medium, "ODBC DSN disappeared since previous snapshot"),
-            _ => null,
+            current => Finding.Create("odbc_dsns", current.Server, current.DsnName, Severity.Medium, "New ODBC DSN detected since previous snapshot"),
             [
                 new((current, old) => current.ConnectionPassed == old.ConnectionPassed
                     ? null
@@ -142,7 +142,7 @@ public static class DiffEngine
     public static IEnumerable<Finding> DiffCertificates(IReadOnlyCollection<CertificateRecord> records, IReadOnlyCollection<CertificateRecord> previous) =>
         Diff(records, previous, x => Helpers.Key(x.Server, x.Thumbprint, x.Subject, x.Store),
             old => Finding.Create("certificates", old.Server, old.Subject, Severity.Medium, "Certificate disappeared since previous snapshot"),
-            _ => null,
+            current => Finding.Create("certificates", current.Server, current.Subject, Severity.Low, "New certificate detected since previous snapshot"),
             [
                 new((current, old) => !Helpers.EqualsText(current.NotAfter, old.NotAfter)
                     ? Finding.Create("certificates", current.Server, current.Subject, Severity.Medium, $"Certificate expiration changed from {old.NotAfter} to {current.NotAfter}")
@@ -152,7 +152,7 @@ public static class DiffEngine
     public static IEnumerable<Finding> DiffSqlAgentJobs(IReadOnlyCollection<SqlAgentJobRecord> records, IReadOnlyCollection<SqlAgentJobRecord> previous) =>
         Diff(records, previous, x => Helpers.Key(x.Server, x.Instance, x.JobName),
             old => Finding.Create("sql_agent_jobs", old.Server, $"{old.Instance}\\{old.JobName}", Severity.Medium, "SQL Agent job disappeared since previous snapshot"),
-            _ => null,
+            current => Finding.Create("sql_agent_jobs", current.Server, $"{current.Instance}\\{current.JobName}", Severity.Medium, "New SQL Agent job detected since previous snapshot"),
             [
                 new((current, old) => current.Enabled != old.Enabled
                     ? Finding.Create("sql_agent_jobs", current.Server, $"{current.Instance}\\{current.JobName}", Severity.High, $"SQL Agent job enabled state changed from {old.Enabled} to {current.Enabled}")
@@ -168,7 +168,7 @@ public static class DiffEngine
     public static IEnumerable<Finding> DiffSsrsSubscriptions(IReadOnlyCollection<SsrsSubscriptionRecord> records, IReadOnlyCollection<SsrsSubscriptionRecord> previous) =>
         Diff(records, previous, x => Helpers.Key(x.Server, x.Instance, x.ReportPath, x.SubscriptionDescription),
             old => Finding.Create("ssrs_subscriptions", old.Server, $"{old.Instance}\\{old.ReportPath}", Severity.Medium, "SSRS subscription disappeared since previous snapshot"),
-            _ => null,
+            current => Finding.Create("ssrs_subscriptions", current.Server, $"{current.Instance}\\{current.ReportPath}", Severity.Medium, "New SSRS subscription detected since previous snapshot"),
             [
                 new((current, old) => current.Enabled != old.Enabled
                     ? Finding.Create("ssrs_subscriptions", current.Server, $"{current.Instance}\\{current.ReportPath}", Severity.High, $"SSRS subscription enabled state changed from {old.Enabled} to {current.Enabled}")
