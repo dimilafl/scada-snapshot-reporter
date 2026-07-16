@@ -30,7 +30,29 @@ internal sealed class GuiSettings
         }
     }
 
-    public void Save() => File.WriteAllText(SettingsPath, JsonSerializer.Serialize(this, JsonOptions()));
+    public void Save()
+    {
+        var tempPath = SettingsPath + ".tmp";
+        File.WriteAllText(tempPath, JsonSerializer.Serialize(this, JsonOptions()));
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(tempPath));
+            File.Move(tempPath, SettingsPath, overwrite: true);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+                // Preserve the original save failure; the temporary file is harmless and can be retried.
+            }
+
+            throw;
+        }
+    }
 
     private static JsonSerializerOptions JsonOptions() => new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 }

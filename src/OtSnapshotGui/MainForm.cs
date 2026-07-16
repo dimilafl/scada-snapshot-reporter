@@ -36,8 +36,18 @@ internal sealed class MainForm : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        SaveSettingsFromUi();
-        _settings.Save();
+        try
+        {
+            SaveSettingsFromUi();
+            _settings.Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            MessageBox.Show($"Could not save GUI settings: {ex.Message}", "Settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            e.Cancel = true;
+            return;
+        }
+
         base.OnFormClosing(e);
     }
 
