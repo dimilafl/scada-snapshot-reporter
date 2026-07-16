@@ -56,6 +56,8 @@ tests/                  Test suite
 4. Run the report engine: `dotnet run --project .\src\OtSnapshotReporter -- --input .\Output\manual-run --config .\config --output .\Output\report`
 5. Open the newest `index.html` under `.\Output\report`
 
+When reusing an existing collection directory, add `-CleanOutput` to remove its old contents before collecting.
+
 ## Build
 
 ```powershell

@@ -97,6 +97,47 @@ Test-Case "All collectors run against localhost" {
     }
 }
 
+Test-Case "Collector runner cleans reusable output when requested" {
+    $cleanRunner = Join-Path $OutputRoot 'clean-output-runner'
+    $cleanOutput = Join-Path $cleanRunner 'output'
+    New-Item -ItemType Directory -Path $cleanOutput -Force | Out-Null
+    Set-Content -Path (Join-Path $cleanOutput 'stale-marker.txt') -Value 'stale'
+    Copy-Item .\collectors\Run-Collectors.ps1 $cleanRunner
+    Set-Content -Path (Join-Path $cleanRunner 'Collect-CleanProbe.ps1') -Value @'
+param(
+    [string] $ConfigPath,
+    [string] $OutputPath
+)
+Set-Content -Path (Join-Path $OutputPath 'fresh-marker.txt') -Value 'fresh'
+exit 0
+'@ -Encoding UTF8
+
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $cleanRunner 'Run-Collectors.ps1') `
+        -ConfigPath .\config -OutputPath $cleanOutput -CleanOutput 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "Expected clean-output runner to pass, got $LASTEXITCODE" }
+    if (Test-Path (Join-Path $cleanOutput 'stale-marker.txt')) { throw "Stale output was not removed" }
+    Assert-FileExists (Join-Path $cleanOutput 'fresh-marker.txt')
+}
+
+Test-Case "Collector runner refuses unsafe cleanup paths" {
+    $unsafeRunner = Join-Path $OutputRoot 'unsafe-clean-runner'
+    New-Item -ItemType Directory -Path $unsafeRunner -Force | Out-Null
+    Copy-Item .\collectors\Run-Collectors.ps1 $unsafeRunner
+    $filesystemRoot = [System.IO.Path]::GetPathRoot((Resolve-Path .).Path)
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $unsafeRunner 'Run-Collectors.ps1') `
+            -ConfigPath .\config -OutputPath $filesystemRoot -CleanOutput 2>$null
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+    if ($exitCode -eq 0) { throw "Unsafe cleanup path was accepted" }
+}
+
 Test-Case "Collector runner propagates collector failures" {
     $runnerRoot = Join-Path $OutputRoot 'failing-runner'
     New-Item -ItemType Directory -Path $runnerRoot -Force | Out-Null

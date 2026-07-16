@@ -2,14 +2,45 @@
     [string] $ConfigPath = ".\config",
     [string] $OutputPath = ".\Output\manual-run",
     [switch] $PerServer,
-    [switch] $RedactPaths
+    [switch] $RedactPaths,
+    [switch] $CleanOutput
 )
 
 $ErrorActionPreference = 'Stop'
 
+function Clear-CollectorOutput {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    $resolvedPath = [System.IO.Path]::GetFullPath($Path).TrimEnd('\')
+    $filesystemRoot = [System.IO.Path]::GetPathRoot($resolvedPath).TrimEnd('\')
+    $scriptDirectory = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')
+    $resolvedWithSeparator = $resolvedPath + '\'
+    $scriptWithSeparator = $scriptDirectory + '\'
+    if ([string]::IsNullOrWhiteSpace($resolvedPath) -or
+        $resolvedPath -eq $filesystemRoot -or
+        $scriptWithSeparator.StartsWith($resolvedWithSeparator, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to clean unsafe collector output path: $resolvedPath"
+    }
+
+    if (-not (Test-Path -LiteralPath $resolvedPath)) {
+        New-Item -Path $resolvedPath -ItemType Directory -Force | Out-Null
+        return
+    }
+
+    foreach ($item in @(Get-ChildItem -LiteralPath $resolvedPath -Force)) {
+        Remove-Item -LiteralPath $item.FullName -Recurse -Force
+    }
+}
+
 $collectorOutputPath = $OutputPath
 if ($PerServer) {
     $collectorOutputPath = Join-Path $OutputPath (Join-Path $env:COMPUTERNAME (Get-Date -Format 'yyyy-MM-dd_HHmmss'))
+}
+if ($CleanOutput) {
+    Clear-CollectorOutput -Path $collectorOutputPath
 }
 
 $collectorScripts = @(Get-ChildItem -Path $PSScriptRoot -Filter 'Collect-*.ps1' | Sort-Object Name)
