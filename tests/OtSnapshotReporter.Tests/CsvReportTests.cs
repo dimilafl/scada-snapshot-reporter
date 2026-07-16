@@ -7,6 +7,7 @@ public sealed class CsvReportTests
     [Fact] public void Escape_ContainsComma_WrapsInQuotes() => Assert.Equal("\"a,b\"", CsvReport.Escape("a,b"));
     [Fact] public void Escape_ContainsDoubleQuote_DoublesQuotes() => Assert.Equal("\"a\"\"b\"", CsvReport.Escape("a\"b"));
     [Fact] public void Escape_ContainsNewline_WrapsInQuotes() => Assert.Equal("\"a\nb\"", CsvReport.Escape("a\nb"));
+    [Fact] public void Escape_ContainsCarriageReturn_WrapsInQuotes() => Assert.Equal("\"a\rb\"", CsvReport.Escape("a\rb"));
     [Fact] public void Escape_LeadingWhitespace_WrapsInQuotes() => Assert.Equal("\" abc\"", CsvReport.Escape(" abc"));
     [Fact] public void Escape_TrailingWhitespace_WrapsInQuotes() => Assert.Equal("\"abc \"", CsvReport.Escape("abc "));
 

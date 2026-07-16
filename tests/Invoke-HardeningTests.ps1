@@ -113,6 +113,60 @@ exit 7
     if ($LASTEXITCODE -ne 1) { throw "Expected runner exit code 1, got $LASTEXITCODE" }
 }
 
+Test-Case "Scheduled wrapper reuses six-digit report folders" {
+    $scheduledRoot = Join-Path (Resolve-Path $OutputRoot).Path 'scheduled-wrapper'
+    $scheduledCollectors = Join-Path $scheduledRoot 'collectors'
+    $scheduledReports = Join-Path $scheduledRoot 'reports'
+    New-Item -ItemType Directory -Path $scheduledCollectors, $scheduledReports -Force | Out-Null
+
+    $previousFolder = Join-Path $scheduledReports '2026-07-15_123456'
+    New-Item -ItemType Directory -Path (Join-Path $previousFolder 'raw') -Force | Out-Null
+    Set-Content -Path (Join-Path $previousFolder 'index.html') -Value '<html></html>'
+    Copy-Item .\collectors\Run-ScheduledSnapshot.ps1 (Join-Path $scheduledCollectors 'Run-ScheduledSnapshot.ps1')
+    Set-Content -Path (Join-Path $scheduledCollectors 'Run-Collectors.ps1') -Value @'
+param(
+    [string] $ConfigPath,
+    [string] $OutputPath
+)
+New-Item -Path (Join-Path $OutputPath 'raw') -ItemType Directory -Force | Out-Null
+Set-Content -Path (Join-Path (Join-Path $OutputPath 'raw') 'sample.json') -Value '{}'
+exit 0
+'@ -Encoding UTF8
+
+    $reportArgsPath = Join-Path $scheduledRoot 'report-args.txt'
+    $env:SCHEDULED_TEST_ARGS = $reportArgsPath
+    Set-Content -Path (Join-Path $scheduledRoot 'Fake-Report.ps1') -Value @'
+[System.IO.File]::WriteAllText($env:SCHEDULED_TEST_ARGS, ($args -join '|'))
+exit 0
+'@ -Encoding UTF8
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scheduledCollectors 'Run-ScheduledSnapshot.ps1') `
+            -OutputRoot $scheduledReports -ReportExecutablePath (Join-Path $scheduledRoot 'Fake-Report.ps1') 2>$null
+        if ($LASTEXITCODE -ne 0) { throw "Scheduled wrapper failed with exit code $LASTEXITCODE" }
+    }
+    finally {
+        Remove-Item Env:SCHEDULED_TEST_ARGS -ErrorAction SilentlyContinue
+    }
+
+    Assert-FileExists $reportArgsPath
+    $reportArgs = Get-Content $reportArgsPath -Raw
+    if ($reportArgs -notmatch [regex]::Escape("--previous|$previousFolder")) {
+        throw "Scheduled wrapper did not pass the six-digit previous report folder: $reportArgs"
+    }
+
+    Set-Content -Path (Join-Path $scheduledRoot 'Failing-Report.ps1') -Value 'exit 9' -Encoding UTF8
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scheduledCollectors 'Run-ScheduledSnapshot.ps1') `
+            -OutputRoot $scheduledReports -ReportExecutablePath (Join-Path $scheduledRoot 'Failing-Report.ps1') 2>$null
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+    if ($LASTEXITCODE -ne 1) { throw "Expected report failure to exit 1, got $LASTEXITCODE" }
+}
+
 $reportNoPrevious = Join-Path $OutputRoot 'report-no-previous'
 Test-Case "Engine runs with no previous snapshot" {
     dotnet run --project .\src\OtSnapshotReporter -- --input $collectorRun --config .\config --output $reportNoPrevious | Out-Null
@@ -320,7 +374,18 @@ Test-Case "RedactPaths hides path-bearing collector fields" {
     .\collectors\Collect-BackupFreshness.ps1 -ConfigPath $config -OutputPath $out -RedactPaths
     $rows = Get-Content (Join-Path $out 'raw\backup_freshness.json') -Raw | ConvertFrom-Json
     if (@($rows).Count -eq 0) { throw "Backup collector emitted no rows" }
+    if ($rows.path -ne '[redacted]') { throw "Backup path was not redacted" }
     if ($rows.newestFile -ne '[redacted]') { throw "Backup newestFile was not redacted" }
+
+    $shareConfig = Join-Path $redactRoot 'share-config'
+    $shareOut = Join-Path $redactRoot 'share-out'
+    New-Item -ItemType Directory -Path $shareConfig, $shareOut -Force | Out-Null
+    Set-Content -Path (Join-Path $shareConfig 'servers.json') -Value '{"servers":[{"name":"localhost","roles":[]}]}'
+    @{ shares = @(@{ name = 'DemoShare'; path = $files }) } | ConvertTo-Json | Set-Content -Path (Join-Path $shareConfig 'shares.json')
+    .\collectors\Collect-FileShareReachability.ps1 -ConfigPath $shareConfig -OutputPath $shareOut -RedactPaths
+    $shareRows = Get-Content (Join-Path $shareOut 'raw\file_shares.json') -Raw | ConvertFrom-Json
+    if (@($shareRows).Count -eq 0) { throw "File-share collector emitted no rows" }
+    if ($shareRows.path -ne '[redacted]') { throw "File-share path was not redacted" }
 }
 
 Test-Case "All collector scripts parse without syntax errors" {

@@ -1,14 +1,24 @@
 ﻿param(
     [string] $TaskName = 'OT Snapshot Reporter',
-    [string] $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
-    [string] $ConfigPath = (Join-Path $RepositoryRoot 'config'),
-    [string] $OutputRoot = (Join-Path $RepositoryRoot 'Output'),
+    [string] $RepositoryRoot,
+    [string] $ConfigPath,
+    [string] $OutputRoot,
     [Parameter(Mandatory = $true)]
     [string] $ReportExecutablePath,
     [string] $DailyAt = '06:00'
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+    $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+}
+if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+    $ConfigPath = Join-Path $RepositoryRoot 'config'
+}
+if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+    $OutputRoot = Join-Path $RepositoryRoot 'Output'
+}
 
 $runner = Join-Path $PSScriptRoot 'Run-ScheduledSnapshot.ps1'
 $time = [DateTime]::ParseExact($DailyAt, 'HH:mm', [Globalization.CultureInfo]::InvariantCulture)

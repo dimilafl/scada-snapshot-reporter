@@ -1,16 +1,18 @@
 ﻿param(
     [string] $ConfigPath = ".\config",
-    [string] $OutputPath = ".\Output\manual-run"
+    [string] $OutputPath = ".\Output\manual-run",
+    [switch] $RedactPaths
 )
 
 . "$PSScriptRoot\CollectorHelpers.ps1"
 
 $servers = Get-ConfiguredServers -ConfigPath $ConfigPath
+$redactPathValues = [bool]$RedactPaths
 $data = Invoke-PerServer -Servers $servers -OutputPath $OutputPath -ScriptBlock {
     param($server)
 
     Invoke-ServerScript -Server $server -ScriptBlock {
-        param($recordServer, $configPath)
+        param($recordServer, $configPath, $redactPaths)
 
         $sharesFile = Join-Path $configPath 'shares.json'
         $shares = @()
@@ -29,7 +31,7 @@ $data = Invoke-PerServer -Servers $servers -OutputPath $OutputPath -ScriptBlock 
                 $errorText = $_.Exception.Message
             }
 
-            [pscustomobject]@{
+            $result = [pscustomobject]@{
                 server = $recordServer
                 name = $share.name
                 path = $share.path
@@ -37,8 +39,12 @@ $data = Invoke-PerServer -Servers $servers -OutputPath $OutputPath -ScriptBlock 
                 error = $errorText
                 checkedAt = (Get-Date).ToString("s")
             }
+            if ($redactPaths) {
+                $result.path = "[redacted]"
+            }
+            $result
         }
-    } -ArgumentList $server, $ConfigPath
+    } -ArgumentList $server, $ConfigPath, $redactPathValues
 }
 
 Write-JsonOutput -Data $data -Path (Join-Path $OutputPath 'raw\file_shares.json')

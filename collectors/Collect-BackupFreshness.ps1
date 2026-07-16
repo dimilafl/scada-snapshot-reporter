@@ -64,6 +64,7 @@ $data = Invoke-PerServer -Servers $servers -OutputPath $OutputPath -ScriptBlock 
                 error = $errorText
             }
             if ($redactPaths) {
+                $result.path = "[redacted]"
                 $result.newestFile = "[redacted]"
             }
             $result

@@ -1,12 +1,22 @@
 ﻿param(
-    [string] $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
-    [string] $ConfigPath = (Join-Path $RepositoryRoot 'config'),
-    [string] $OutputRoot = (Join-Path $RepositoryRoot 'Output'),
+    [string] $RepositoryRoot,
+    [string] $ConfigPath,
+    [string] $OutputRoot,
     [Parameter(Mandatory = $true)]
     [string] $ReportExecutablePath
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+    $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+}
+if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+    $ConfigPath = Join-Path $RepositoryRoot 'config'
+}
+if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+    $OutputRoot = Join-Path $RepositoryRoot 'Output'
+}
 
 function Get-LatestReportFolder {
     param(
@@ -20,7 +30,7 @@ function Get-LatestReportFolder {
 
     Get-ChildItem -Path $OutputRoot -Directory |
         Where-Object {
-            $_.Name -match '^\d{4}-\d{2}-\d{2}_\d{4}$' -and
+            $_.Name -match '^\d{4}-\d{2}-\d{2}_\d{4,6}$' -and
             (Test-Path (Join-Path $_.FullName 'raw')) -and
             (Test-Path (Join-Path $_.FullName 'index.html'))
         } |
@@ -44,8 +54,13 @@ if ($null -ne $previous) {
 }
 
 if ($ReportExecutablePath.EndsWith('.dll', [System.StringComparison]::OrdinalIgnoreCase)) {
+    $LASTEXITCODE = 0
     & dotnet $ReportExecutablePath @arguments
 }
 else {
+    $LASTEXITCODE = 0
     & $ReportExecutablePath @arguments
+}
+if ($LASTEXITCODE -ne 0) {
+    throw "Report generation failed with exit code $LASTEXITCODE."
 }
