@@ -415,31 +415,38 @@ internal sealed class MainForm : Form
 
     private void OpenReport()
     {
-        var index = Path.HasExtension(_settings.LastReportPath)
-            ? _settings.LastReportPath
-            : Path.Combine(_settings.LastReportPath, "index.html");
-        if (string.IsNullOrWhiteSpace(index) || !File.Exists(index))
+        try
         {
-            MessageBox.Show("No report available.", "View Report", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
+            var index = Path.HasExtension(_settings.LastReportPath)
+                ? _settings.LastReportPath
+                : Path.Combine(_settings.LastReportPath, "index.html");
+            if (string.IsNullOrWhiteSpace(index) || !File.Exists(index))
+            {
+                MessageBox.Show("No report available.", "View Report", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
-        var outputRoot = Path.GetFullPath(_outputRoot.Text);
-        var outputRootWithSeparator = outputRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var resolvedIndex = Path.GetFullPath(index);
-        if (!resolvedIndex.StartsWith(outputRootWithSeparator, StringComparison.OrdinalIgnoreCase))
+            var outputRoot = Path.GetFullPath(_outputRoot.Text);
+            var outputRootWithSeparator = outputRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var resolvedIndex = Path.GetFullPath(index);
+            if (!resolvedIndex.StartsWith(outputRootWithSeparator, StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Report path is outside the output directory.", "Security", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!resolvedIndex.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Report path is not an HTML file.", "Security", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo(resolvedIndex) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or NotSupportedException or System.ComponentModel.Win32Exception)
         {
-            MessageBox.Show("Report path is outside the output directory.", "Security", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
+            MessageBox.Show($"Could not open report: {ex.Message}", "View Report", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-
-        if (!resolvedIndex.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
-        {
-            MessageBox.Show("Report path is not an HTML file.", "Security", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        Process.Start(new ProcessStartInfo(resolvedIndex) { UseShellExecute = true });
     }
 
     private string ServersPath() => Path.Combine(_configPath.Text, "servers.json");
@@ -451,7 +458,7 @@ internal sealed class MainForm : Form
         while (true)
         {
             var candidate = Path.Combine(_outputRoot.Text, $"collection_{stamp:yyyy-MM-dd_HHmmss}");
-            if (!Directory.Exists(candidate)) return candidate;
+            if (!Directory.Exists(candidate) && !File.Exists(candidate)) return candidate;
             stamp = stamp.AddSeconds(1);
         }
     }
