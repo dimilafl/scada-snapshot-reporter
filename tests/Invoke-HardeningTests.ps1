@@ -178,6 +178,23 @@ exit 0
     Assert-FileExists (Join-Path (Join-Path (Join-Path $redactionRunner 'output') 'raw') 'redaction.json')
 }
 
+Test-Case "Collector JSON output is atomic and valid" {
+    . .\collectors\CollectorHelpers.ps1
+    $atomicOutput = Join-Path $OutputRoot 'atomic-output\raw\probe.json'
+    Write-JsonOutput -Data @([pscustomobject]@{ server = 'localhost'; value = 'complete' }) -Path $atomicOutput
+
+    $rows = @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $atomicOutput -Raw))
+    if ($rows.Count -ne 1 -or $rows[0].value -ne 'complete') {
+        throw "Atomic collector output was not valid JSON"
+    }
+
+    $tempFiles = @(Get-ChildItem -LiteralPath (Split-Path -Path $atomicOutput -Parent) -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like '*.tmp' -or $_.Name -like '*.bak' })
+    if ($tempFiles.Count -gt 0) {
+        throw "Atomic collector output left temporary files behind"
+    }
+}
+
 Test-Case "Scheduled wrapper reuses six-digit report folders" {
     $scheduledRoot = Join-Path (Resolve-Path $OutputRoot).Path 'scheduled-wrapper'
     $scheduledCollectors = Join-Path $scheduledRoot 'collectors'

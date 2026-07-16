@@ -51,6 +51,52 @@ function Get-BoundedFiles {
     }
 }
 
+function Write-TextAtomically {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Contents
+    )
+
+    $tempId = [guid]::NewGuid().ToString('N')
+    $tempPath = "$Path.$tempId.tmp"
+    $backupPath = "$Path.$tempId.bak"
+    try {
+        [System.IO.File]::WriteAllText($tempPath, $Contents, [System.Text.UTF8Encoding]::new($false))
+        if ([System.IO.File]::Exists($Path)) {
+            [System.IO.File]::Replace($tempPath, $Path, $backupPath)
+            try {
+                if ([System.IO.File]::Exists($backupPath)) {
+                    [System.IO.File]::Delete($backupPath)
+                }
+            }
+            catch {
+                # The destination is already updated; a backup can be cleaned up on a later run.
+            }
+        }
+        else {
+            [System.IO.File]::Move($tempPath, $Path)
+        }
+    }
+    catch {
+        try {
+            if ([System.IO.File]::Exists($tempPath)) {
+                [System.IO.File]::Delete($tempPath)
+            }
+            if ([System.IO.File]::Exists($backupPath)) {
+                [System.IO.File]::Delete($backupPath)
+            }
+        }
+        catch {
+            # Preserve the original write failure; a leftover temp file can be retried later.
+        }
+
+        throw
+    }
+}
+
 function Write-JsonOutput {
     param(
         [object] $Data,
@@ -76,12 +122,12 @@ function Write-JsonOutput {
     }
 
     if ($items.Count -eq 0) {
-        [System.IO.File]::WriteAllText($Path, '[]', [System.Text.UTF8Encoding]::new($false))
+        Write-TextAtomically -Path $Path -Contents '[]'
         return
     }
 
     $json = ConvertTo-Json -InputObject $items.ToArray() -Depth 8
-    [System.IO.File]::WriteAllText($Path, $json, [System.Text.UTF8Encoding]::new($false))
+    Write-TextAtomically -Path $Path -Contents $json
 }
 
 function Write-JsonDocument {
@@ -95,7 +141,7 @@ function Write-JsonDocument {
     $parent = Split-Path -Path $Path -Parent
     Ensure-Directory -Path $parent
     $json = ConvertTo-Json -InputObject $Data -Depth 8
-    [System.IO.File]::WriteAllText($Path, $json, [System.Text.UTF8Encoding]::new($false))
+    Write-TextAtomically -Path $Path -Contents $json
 }
 
 function Invoke-PerServer {
