@@ -3,6 +3,8 @@
 Base commit: `454a842` (`Add GUI launcher and collector error handling`)
 Working directory: `C:\dev\Scada-Programming`
 
+> Historical implementation plan. Later batches completed the deferred per-server merge, phase-two drift, collector error isolation, and scheduled-task hardening described below.
+
 ---
 
 ## Batch A â€” Data Contract Fixes + Diff Completion

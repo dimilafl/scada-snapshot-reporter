@@ -149,17 +149,42 @@ public static class Loading
         }
 
         var raw = Path.Combine(path, "raw");
-        return new PreviousSnapshot(
-            LoadJson<List<ServiceRecord>>(Path.Combine(raw, "services.json"), json) ?? [],
-            LoadJson<List<DiskRecord>>(Path.Combine(raw, "disk_space.json"), json) ?? [],
-            LoadJson<List<TaskRecord>>(Path.Combine(raw, "scheduled_tasks.json"), json) ?? [],
-            LoadJson<List<UptimeRecord>>(Path.Combine(raw, "uptime.json"), json) ?? [],
-            LoadJson<List<SoftwareRecord>>(Path.Combine(raw, "software.json"), json) ?? [],
-            LoadJson<List<DriverRecord>>(Path.Combine(raw, "odbc_oledb.json"), json) ?? [],
-            LoadJson<List<EventLogSummaryRecord>>(Path.Combine(raw, "event_log_summary.json"), json) ?? [],
-            LoadJson<List<FileShareRecord>>(Path.Combine(raw, "file_shares.json"), json) ?? [],
-            LoadJson<List<BackupFreshnessRecord>>(Path.Combine(raw, "backup_freshness.json"), json) ?? []);
+        string? temporaryMergeRoot = null;
+        if (!Directory.Exists(raw) && Directory.Exists(path) && Directory.GetFiles(path, "*.json").Length > 0)
+        {
+            raw = path;
+        }
+        else if (!Directory.Exists(raw) && HasPerServerRawFolders(path))
+        {
+            temporaryMergeRoot = Path.Combine(Path.GetTempPath(), $"ot-snapshot-previous-{Guid.NewGuid():N}");
+            raw = ResolveRawRoot(path, temporaryMergeRoot);
+        }
+
+        try
+        {
+            return new PreviousSnapshot(
+                LoadJson<List<ServiceRecord>>(Path.Combine(raw, "services.json"), json) ?? [],
+                LoadJson<List<DiskRecord>>(Path.Combine(raw, "disk_space.json"), json) ?? [],
+                LoadJson<List<TaskRecord>>(Path.Combine(raw, "scheduled_tasks.json"), json) ?? [],
+                LoadJson<List<UptimeRecord>>(Path.Combine(raw, "uptime.json"), json) ?? [],
+                LoadJson<List<SoftwareRecord>>(Path.Combine(raw, "software.json"), json) ?? [],
+                LoadJson<List<DriverRecord>>(Path.Combine(raw, "odbc_oledb.json"), json) ?? [],
+                LoadJson<List<EventLogSummaryRecord>>(Path.Combine(raw, "event_log_summary.json"), json) ?? [],
+                LoadJson<List<FileShareRecord>>(Path.Combine(raw, "file_shares.json"), json) ?? [],
+                LoadJson<List<BackupFreshnessRecord>>(Path.Combine(raw, "backup_freshness.json"), json) ?? []);
+        }
+        finally
+        {
+            if (temporaryMergeRoot is not null && Directory.Exists(temporaryMergeRoot))
+            {
+                Directory.Delete(temporaryMergeRoot, recursive: true);
+            }
+        }
     }
+
+    private static bool HasPerServerRawFolders(string path) =>
+        Directory.Exists(path) && Directory.GetDirectories(path)
+            .Any(directory => Directory.Exists(Path.Combine(directory, "raw")));
 
     public static List<ModuleDescriptor> GetModuleDescriptors() =>
     [

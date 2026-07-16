@@ -36,7 +36,7 @@ public sealed record AppOptions(string InputPath, string ConfigPath, string Outp
           --input <path>       Snapshot input folder, raw folder, or per-server collection root.
           --config <path>      Configuration folder. Default: .\config
           --output <path>      Report output folder. Default: .\Output
-          --previous <path>    Previous snapshot folder for drift comparison.
+          --previous <path>    Previous wrapper, raw, or per-server snapshot input for drift comparison.
           --accept-baseline    Rewrite expected service/task/software/driver baselines.
           --help, -h           Show this help text.
         """;

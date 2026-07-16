@@ -34,6 +34,9 @@ New-Item -Path $collectionPath -ItemType Directory -Force | Out-Null
 
 $previous = Get-LatestReportFolder -OutputRoot $OutputRoot
 & (Join-Path $PSScriptRoot 'Run-Collectors.ps1') -ConfigPath $ConfigPath -OutputPath $collectionPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Collector run failed with exit code $LASTEXITCODE; report generation was skipped."
+}
 
 $arguments = @('--input', $collectionPath, '--config', $ConfigPath, '--output', $OutputRoot)
 if ($null -ne $previous) {

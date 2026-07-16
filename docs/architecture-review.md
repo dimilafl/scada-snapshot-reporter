@@ -2,11 +2,15 @@
 
 Date: 2026-06-03 | Base commit: `a550fe8`
 
+> This is a historical review record. The status notes below describe the current public tree and distinguish resolved findings from remaining design debt.
+
 ---
 
-## Correctness Bugs
+## Historical Findings
 
 ### 1. `LoadPreviousSnapshot` excludes Phase 2 modules â€” no diff detection
+
+**Status: Resolved.** Phase 2 records are part of `PreviousSnapshot`, and the report engine runs event-log, file-share, and backup drift comparisons.
 
 `LoadPreviousSnapshot` at `src/OtSnapshotReporter/Program.cs:95-110` hardcodes 6 module filenames (services, disk_space, scheduled_tasks, uptime, software, odbc_oledb). Phase 2 modules (event_log_summary, file_shares, backup_freshness) are loaded at lines 37-39 but never included in `PreviousSnapshot`. The `PreviousSnapshot` record at lines 551-560 also has only 6 properties, missing Phase 2.
 
@@ -15,6 +19,8 @@ Impact: Diff detection for event logs, file share reachability, and backup fresh
 Fix: Add `EventLogSummaryRecords`, `FileShareRecords`, and `BackupFreshnessRecords` to `PreviousSnapshot`, and add `DiffEventLogs`, `DiffFileShares`, `DiffBackups` analyzer methods.
 
 ### 2. `FileShareRecord` and `BackupFreshnessRecord` have no `Server` field
+
+**Status: Resolved.** Both records now carry `Server`, and their collectors run through the per-server collection helper.
 
 `FileShareRecord` at `Program.cs:548` has `(string? Name, string Path, bool Reachable, string? Error, string? CheckedAt)`. `BackupFreshnessRecord` at `Program.cs:549` has `(string? Name, string Path, double? MaxAgeHours, bool Exists, ...)`. Every other record type leads with `string Server`.
 
@@ -26,6 +32,8 @@ Fix: Add `Server` field to both records. Make `Collect-FileShareReachability.ps1
 
 ### 3. `Invoke-PerServer` error records leak into data arrays
 
+**Status: Resolved.** Collection errors are written to `_errors.json`; the engine loads them as dedicated collection-error findings. Per-server merge failures are also recorded there.
+
 `CollectorHelpers.ps1:80-95` catches per-server failures and appends `{server, error}` blobs into the same `$results` array as valid records. `Initialize-ExpectedConfig.ps1` filters these via `Test-HasProperty`, but the C# engine does not â€” it deserializes the entire JSON array as typed records (`ServiceRecord`, etc.). Extra fields are silently ignored by `PropertyNameCaseInsensitive`, but required fields like `Name` end up null, producing confusing findings or null-reference issues in string comparisons.
 
 Impact: One unreachable server produces malformed data. The engine doesn't crash (nulls propagate through string comparisons as empty strings due to `EqualsText`), but produces misleading findings like "Service status changed from  to Stopped."
@@ -33,6 +41,8 @@ Impact: One unreachable server produces malformed data. The engine doesn't crash
 Fix: `Invoke-PerServer` should write errors to a separate `_errors.json` file. The engine should load and display server connectivity errors in its own section. Minimum fix: filter records post-deserialization where `Server` is non-null and `Name` is non-null.
 
 ### 4. `Collect-BackupFreshness.ps1` does unbounded recursive scan
+
+**Status: Resolved.** The collector limits recursion to depth 4 and caps the examined file set at 50,000 entries.
 
 `Collect-BackupFreshness.ps1:25`: `Get-ChildItem -Path $expectedPath.path -File -Recurse` with no depth limit, no file count cap. If `expected_paths.json` points at a root drive or a folder with millions of files, the collector will hang or exhaust memory.
 
@@ -43,6 +53,8 @@ Fix: Add `-Depth 4` or configurable max files limit. A misconfigured path should
 ## Design Debt
 
 ### 5. Monolithic `Main` with 3+ hardcoded module lists
+
+**Status: Partially resolved.** The public tree separates models, loading, analysis, diffing, and report rendering. `Program.cs` still coordinates module loading and output explicitly; that is a future refactoring opportunity, not a known missing-feature bug.
 
 `Program.cs` is 748 lines in a single file. Every module appears in 5+ locations:
 
@@ -61,6 +73,8 @@ Recommendation: Define a module registry (list of `(collectorFile, recordType, c
 
 ### 6. `Run-Collectors.ps1` mirrors the same hardcoded-list problem
 
+**Status: Resolved.** The runner discovers `Collect-*.ps1` files by convention and now propagates collector failures to callers.
+
 `Run-Collectors.ps1:8-16` calls 9 collectors by explicit filename. Adding a collector means editing this file. The smoke test runner at `tests/Invoke-SmokeTests.ps1:75` iterates `Get-ChildItem -Filter *.ps1` for parsing but not for execution â€” it misses collector results.
 
 Recommendation: Either convention-based discovery (`Get-ChildItem Collect-*.ps1 | ForEach-Object { & $_ }`) or a collector manifest file that both the runner and smoke test read.
@@ -72,6 +86,8 @@ The collector-to-engine contract is the implicit field names in `[pscustomobject
 Recommendation: At minimum, smoke test asserts field presence on deserialized records. Ideally, embed a versioned schema hash per collector output.
 
 ### 8. `Register-SnapshotTask.ps1` uses interactive user, not SYSTEM
+
+**Status: Resolved.** Scheduled registration uses the local SYSTEM service account with highest run level.
 
 `Register-SnapshotTask.ps1:27`: `-UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType S4U`. S4U means "run only when user is logged on" â€” if the user is logged off at 06:00, the task doesn't run. This also means the task runs under the caller's credentials, which may lack admin on remote servers or share write permissions. The per-server deployment model needs either SYSTEM (which already has local admin and computer-account network identity) or a dedicated service account with constrained permissions.
 

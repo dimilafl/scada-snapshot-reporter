@@ -52,4 +52,50 @@ public sealed class LoadingTests
         Directory.Delete(dir);
         Assert.Equal(Path.Combine(dir, "raw"), result);
     }
+
+    [Fact]
+    public void LoadPreviousSnapshot_AcceptsDirectRawFolder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-previous-" + Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "services.json"), "[{\"Server\":\"SRV01\",\"Name\":\"Demo\",\"DisplayName\":\"Demo\",\"Status\":\"Running\",\"StartupType\":\"Automatic\",\"StartName\":\"SYSTEM\"}]");
+
+            var previous = Loading.LoadPreviousSnapshot(root, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Assert.Single(previous.Services);
+            Assert.Equal("SRV01", previous.Services.Single().Server);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LoadPreviousSnapshot_MergesPerServerFolders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-previous-" + Guid.NewGuid());
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "server-a", "raw"));
+            Directory.CreateDirectory(Path.Combine(root, "server-b", "raw"));
+            var record = "[{\"Server\":\"{0}\",\"Name\":\"Demo\",\"DisplayName\":\"Demo\",\"Status\":\"Running\",\"StartupType\":\"Automatic\",\"StartName\":\"SYSTEM\"}]";
+            File.WriteAllText(Path.Combine(root, "server-a", "raw", "services.json"), record.Replace("{0}", "server-a", StringComparison.Ordinal));
+            File.WriteAllText(Path.Combine(root, "server-b", "raw", "services.json"), record.Replace("{0}", "server-b", StringComparison.Ordinal));
+
+            var previous = Loading.LoadPreviousSnapshot(root, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Assert.Equal(2, previous.Services.Count);
+            var servers = previous.Services.Select(x => x.Server).OrderBy(x => x).ToArray();
+            Assert.Equal("server-a", servers[0]);
+            Assert.Equal("server-b", servers[1]);
+            Assert.Empty(Directory.GetDirectories(root, ".*", SearchOption.TopDirectoryOnly));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

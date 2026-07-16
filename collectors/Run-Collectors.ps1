@@ -15,6 +15,7 @@ if ($PerServer) {
 $collectorScripts = @(Get-ChildItem -Path $PSScriptRoot -Filter 'Collect-*.ps1' | Sort-Object Name)
 $total = $collectorScripts.Count
 $index = 0
+$failedCollectors = New-Object System.Collections.Generic.List[string]
 foreach ($script in $collectorScripts) {
     $index++
     Write-Host "[$index/$total] Running $($script.Name)..." -ForegroundColor Cyan
@@ -27,9 +28,11 @@ foreach ($script in $collectorScripts) {
     }
 
     try {
+        $LASTEXITCODE = 0
         & $script.FullName @collectorArgs
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "  $($script.Name) exited with code $LASTEXITCODE"
+            $failedCollectors.Add($script.Name)
         }
         else {
             Write-Host "  Done." -ForegroundColor Green
@@ -37,9 +40,17 @@ foreach ($script in $collectorScripts) {
     }
     catch {
         Write-Warning "  $($script.Name) threw: $($_.Exception.Message)"
+        $failedCollectors.Add($script.Name)
     }
 }
 
 if ($PerServer) {
     Write-Host "Per-server collection written to $collectorOutputPath"
 }
+
+if ($failedCollectors.Count -gt 0) {
+    Write-Warning "Collection failed for: $($failedCollectors -join ', ')"
+    exit 1
+}
+
+exit 0

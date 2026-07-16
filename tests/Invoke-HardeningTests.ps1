@@ -97,6 +97,22 @@ Test-Case "All collectors run against localhost" {
     }
 }
 
+Test-Case "Collector runner propagates collector failures" {
+    $runnerRoot = Join-Path $OutputRoot 'failing-runner'
+    New-Item -ItemType Directory -Path $runnerRoot -Force | Out-Null
+    Copy-Item .\collectors\Run-Collectors.ps1 $runnerRoot
+    Set-Content -Path (Join-Path $runnerRoot 'Collect-IntentionalFailure.ps1') -Value @'
+param(
+    [string] $ConfigPath,
+    [string] $OutputPath
+)
+exit 7
+'@ -Encoding UTF8
+
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $runnerRoot 'Run-Collectors.ps1') -ConfigPath .\config -OutputPath (Join-Path $runnerRoot 'output') 2>$null
+    if ($LASTEXITCODE -ne 1) { throw "Expected runner exit code 1, got $LASTEXITCODE" }
+}
+
 $reportNoPrevious = Join-Path $OutputRoot 'report-no-previous'
 Test-Case "Engine runs with no previous snapshot" {
     dotnet run --project .\src\OtSnapshotReporter -- --input $collectorRun --config .\config --output $reportNoPrevious | Out-Null

@@ -34,7 +34,7 @@ One support workstation runs collectors against all configured servers. This req
 
 ### Per-Server Collection
 
-Each server runs `Run-Collectors.ps1 -PerServer` locally and writes to a shared output directory. This avoids inbound WinRM to target servers and lets the report engine merge per-server `raw` folders later.
+Each server runs `Run-Collectors.ps1 -PerServer` locally and writes to a shared output directory. This avoids inbound WinRM to target servers, and the report engine merges per-server `raw` folders in memory-backed temporary input during report generation.
 
 ## Collector Schema Reference
 
