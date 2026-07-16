@@ -16,15 +16,7 @@ internal static class AtomicFile
         try
         {
             File.WriteAllText(tempPath, contents, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            if (File.Exists(fullPath))
-            {
-                File.Replace(tempPath, fullPath, backupPath, ignoreMetadataErrors: true);
-                TryDelete(backupPath);
-            }
-            else
-            {
-                File.Move(tempPath, fullPath);
-            }
+            InstallDestination(tempPath, fullPath, backupPath);
         }
         catch
         {
@@ -57,6 +49,32 @@ internal static class AtomicFile
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // A cleanup failure must not block a valid settings or server write.
+        }
+    }
+
+    private static void InstallDestination(string tempPath, string fullPath, string backupPath)
+    {
+        const int maxRetries = 5;
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (File.Exists(fullPath))
+                {
+                    File.Replace(tempPath, fullPath, backupPath, ignoreMetadataErrors: true);
+                    TryDelete(backupPath);
+                }
+                else
+                {
+                    File.Move(tempPath, fullPath);
+                }
+
+                return;
+            }
+            catch (IOException) when (attempt < maxRetries)
+            {
+                Thread.Sleep(10 * (attempt + 1));
+            }
         }
     }
 

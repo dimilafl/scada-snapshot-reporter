@@ -176,6 +176,28 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public async Task WriteTextAtomically_ConcurrentWritesLeaveOneValidDocument()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-atomic-concurrency-test-" + Guid.NewGuid());
+        var path = Path.Combine(root, "report.txt");
+        var values = Enumerable.Range(0, 12).Select(index => $"value-{index}").ToArray();
+        try
+        {
+            Directory.CreateDirectory(root);
+            await Task.WhenAll(values.Select(value => Task.Run(() => Writing.WriteTextAtomically(path, value))));
+
+            Assert.Contains(File.ReadAllText(path), values);
+            Assert.DoesNotContain(Directory.GetFiles(root), file =>
+                file.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) ||
+                file.EndsWith(".bak", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void CleanupOldSnapshots_ContinuesWhenOneFolderIsLocked()
     {
         var root = Path.Combine(Path.GetTempPath(), "ot-retention-test-" + Guid.NewGuid());

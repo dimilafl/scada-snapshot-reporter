@@ -26,15 +26,7 @@ public static class Writing
                 File.WriteAllText(tempPath, contents, encoding);
             }
 
-            if (File.Exists(fullPath))
-            {
-                File.Replace(tempPath, fullPath, backupPath, ignoreMetadataErrors: true);
-                TryDeleteAtomicArtifact(backupPath);
-            }
-            else
-            {
-                File.Move(tempPath, fullPath);
-            }
+            InstallAtomicDestination(tempPath, fullPath, backupPath);
         }
         catch
         {
@@ -82,6 +74,32 @@ public static class Writing
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine($"WARNING: Could not inspect atomic artifacts under {directory}: {ex.Message}");
+        }
+    }
+
+    private static void InstallAtomicDestination(string tempPath, string fullPath, string backupPath)
+    {
+        const int maxRetries = 5;
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (File.Exists(fullPath))
+                {
+                    File.Replace(tempPath, fullPath, backupPath, ignoreMetadataErrors: true);
+                    TryDeleteAtomicArtifact(backupPath);
+                }
+                else
+                {
+                    File.Move(tempPath, fullPath);
+                }
+
+                return;
+            }
+            catch (IOException) when (attempt < maxRetries)
+            {
+                Thread.Sleep(10 * (attempt + 1));
+            }
         }
     }
 
