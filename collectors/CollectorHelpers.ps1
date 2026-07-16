@@ -17,10 +17,19 @@ function Get-ConfiguredServers {
     }
 
     $content = Get-Content -Path $serversFile -Raw | ConvertFrom-Json
-    $entries = @()
-    if ($null -ne $content.servers) {
-        $entries = @($content.servers)
+    if ($null -eq $content -or $null -eq $content.PSObject.Properties['servers']) {
+        throw "servers.json must contain a 'servers' array of objects with names."
     }
+
+    $rawEntries = $content.servers
+    if ($null -eq $rawEntries) {
+        return @($env:COMPUTERNAME)
+    }
+    if ($rawEntries -is [string] -or $rawEntries -isnot [System.Collections.IEnumerable]) {
+        throw "servers.json must contain a 'servers' array of objects with names."
+    }
+
+    $entries = @($rawEntries)
     if ($entries.Count -eq 0) {
         return @($env:COMPUTERNAME)
     }
@@ -39,7 +48,7 @@ function Get-ConfiguredServers {
     }
 
     if ($servers.Count -eq 0) {
-        return @($env:COMPUTERNAME)
+        throw "servers.json must contain at least one non-empty server name."
     }
 
     return @($servers.ToArray())

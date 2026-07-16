@@ -214,7 +214,10 @@ Test-Case "Collector helper normalizes configured servers" {
     Set-Content -LiteralPath (Join-Path $serverConfig 'servers.json') -Value '{"servers":[{"name":" server-a "},{"name":"SERVER-A"},{"name":"server-b"},{"name":""},null]}' -Encoding UTF8
     $emptyConfig = Join-Path $OutputRoot 'empty-server-config'
     New-Item -ItemType Directory -Path $emptyConfig -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $emptyConfig 'servers.json') -Value '{"servers":"localhost"}' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $emptyConfig 'servers.json') -Value '{"servers":[]}' -Encoding UTF8
+    $invalidConfig = Join-Path $OutputRoot 'invalid-server-config'
+    New-Item -ItemType Directory -Path $invalidConfig -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $invalidConfig 'servers.json') -Value '{"servers":"localhost"}' -Encoding UTF8
 
     $hadOverride = Test-Path Env:OT_SNAPSHOT_TARGET_SERVER
     $previousOverride = $env:OT_SNAPSHOT_TARGET_SERVER
@@ -223,6 +226,15 @@ Test-Case "Collector helper normalizes configured servers" {
         . .\collectors\CollectorHelpers.ps1
         $servers = @(Get-ConfiguredServers -ConfigPath $serverConfig)
         $fallbackServers = @(Get-ConfiguredServers -ConfigPath $emptyConfig)
+        $invalidThrew = $false
+        $invalidMessage = ''
+        try {
+            Get-ConfiguredServers -ConfigPath $invalidConfig | Out-Null
+        }
+        catch {
+            $invalidThrew = $true
+            $invalidMessage = $_.Exception.Message
+        }
     }
     finally {
         if ($hadOverride) {
@@ -237,7 +249,10 @@ Test-Case "Collector helper normalizes configured servers" {
         throw "Configured server normalization returned unexpected entries: $($servers -join ', ')"
     }
     if ($fallbackServers.Count -ne 1 -or $fallbackServers[0] -ne $env:COMPUTERNAME) {
-        throw "Empty configured server entries did not fall back to the local computer"
+        throw "An empty configured server array did not fall back to the local computer"
+    }
+    if (-not $invalidThrew -or $invalidMessage -notmatch 'servers.*array') {
+        throw "Malformed scalar server configuration did not fail clearly: $invalidMessage"
     }
 }
 
