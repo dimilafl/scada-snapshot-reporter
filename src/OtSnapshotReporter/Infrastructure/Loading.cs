@@ -29,6 +29,45 @@ public static class Loading
         }
     }
 
+    public static T LoadConfig<T>(string path, JsonSerializerOptions options, string collectionPropertyName) where T : class
+    {
+        if (!File.Exists(path))
+        {
+            throw new InvalidDataException($"Config file does not exist: {path}");
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException($"Config file must contain a '{collectionPropertyName}' array: {path}");
+            }
+
+            var property = document.RootElement.EnumerateObject()
+                .FirstOrDefault(candidate => string.Equals(candidate.Name, collectionPropertyName, StringComparison.OrdinalIgnoreCase));
+            if (property.Value.ValueKind != JsonValueKind.Array)
+            {
+                throw new InvalidDataException($"Config file must contain a '{collectionPropertyName}' array: {path}");
+            }
+
+            return document.RootElement.Deserialize<T>(options)
+                ?? throw new InvalidDataException($"Config file is invalid: {path}");
+        }
+        catch (InvalidDataException)
+        {
+            throw;
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"Config file is invalid: {path}", ex);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new InvalidDataException($"Config file is invalid: {path}", ex);
+        }
+    }
+
     public static List<T> LoadRecords<T>(string path, JsonSerializerOptions options, Func<T, bool> isValid, string recordType) where T : class
     {
         if (!File.Exists(path))

@@ -27,4 +27,26 @@ public sealed class CsvReportTests
         File.Delete(path);
         Assert.Single(lines);
     }
+
+    [Fact] public void WriteFindings_UsesStableSeverityAndIdentityOrdering()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".csv");
+        try
+        {
+            CsvReport.WriteFindings(path, [
+                Finding.Create("services", "SRV02", "B", Severity.High, "z"),
+                Finding.Create("services", "SRV01", "A", Severity.High, "a"),
+                Finding.Create("disk", "SRV01", "C:", Severity.Critical, "full")
+            ]);
+
+            var lines = File.ReadAllLines(path);
+            Assert.Contains("disk,SRV01,C:,Critical,full", lines[1]);
+            Assert.Contains("services,SRV01,A,High,a", lines[2]);
+            Assert.Contains("services,SRV02,B,High,z", lines[3]);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
 }

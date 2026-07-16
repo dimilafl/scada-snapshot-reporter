@@ -50,14 +50,14 @@ var json = new JsonSerializerOptions
     Converters = { new JsonStringEnumConverter() }
 };
 
-T LoadOptionalConfig<T>(string path, T fallback) where T : class
+T LoadOptionalConfig<T>(string path, T fallback, string collectionPropertyName) where T : class
 {
     if (!File.Exists(path))
     {
         return fallback;
     }
 
-    return Loading.LoadJson<T>(path, json) ?? throw new InvalidDataException($"Config file is invalid: {path}");
+    return Loading.LoadConfig<T>(path, json, collectionPropertyName);
 }
 
 var thresholdsPath = Path.Combine(options.ConfigPath, "thresholds.json");
@@ -118,11 +118,11 @@ ExpectedDriversConfig expectedDrivers;
 MaintenanceWindowsConfig maintenanceWindows;
 try
 {
-    expectedServices = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_services.json"), new ExpectedServicesConfig());
-    expectedTasks = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_tasks.json"), new ExpectedTasksConfig());
-    expectedSoftware = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_software.json"), new ExpectedSoftwareConfig());
-    expectedDrivers = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_drivers.json"), new ExpectedDriversConfig());
-    maintenanceWindows = LoadOptionalConfig(Path.Combine(options.ConfigPath, "maintenance_windows.json"), new MaintenanceWindowsConfig());
+    expectedServices = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_services.json"), new ExpectedServicesConfig(), "services");
+    expectedTasks = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_tasks.json"), new ExpectedTasksConfig(), "tasks");
+    expectedSoftware = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_software.json"), new ExpectedSoftwareConfig(), "software");
+    expectedDrivers = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_drivers.json"), new ExpectedDriversConfig(), "drivers");
+    maintenanceWindows = LoadOptionalConfig(Path.Combine(options.ConfigPath, "maintenance_windows.json"), new MaintenanceWindowsConfig(), "windows");
 }
 catch (InvalidDataException ex)
 {
@@ -205,7 +205,7 @@ findings.AddRange(Analyzers.AnalyzeFileShares(fileShares));
 findings.AddRange(Analyzers.AnalyzeBackups(backups));
 findings.AddRange(Analyzers.AnalyzeOdbcDsns(odbcDsns));
 findings.AddRange(Analyzers.AnalyzeCertificates(certificates));
-findings.AddRange(Analyzers.AnalyzeSqlAgentJobs(sqlAgentJobs));
+findings.AddRange(Analyzers.AnalyzeSqlAgentJobs(sqlAgentJobs, DateTime.UtcNow));
 findings.AddRange(Analyzers.AnalyzeSsrsSubscriptions(ssrsSubscriptions));
 findings.AddRange(DiffEngine.DiffServices(services, previous.Services));
 findings.AddRange(DiffEngine.DiffDisks(disks, previous.Disks, thresholds));

@@ -28,6 +28,26 @@ public sealed class LoadingTests
     }
 
     [Fact]
+    public void LoadConfig_RejectsNullOrScalarCollections()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "ot-config-" + Guid.NewGuid() + ".json");
+        try
+        {
+            File.WriteAllText(path, "{\"tasks\":null}");
+            var nullException = Assert.Throws<InvalidDataException>(() => Loading.LoadConfig<ExpectedTasksConfig>(path, new JsonSerializerOptions(), "tasks"));
+            Assert.Contains("tasks", nullException.Message);
+
+            File.WriteAllText(path, "{\"tasks\":\"invalid\"}");
+            var scalarException = Assert.Throws<InvalidDataException>(() => Loading.LoadConfig<ExpectedTasksConfig>(path, new JsonSerializerOptions(), "tasks"));
+            Assert.Contains("array", scalarException.Message);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void LoadJson_FileNotFound_ReturnsNull()
     {
         var result = Loading.LoadJson<ServiceRecord>(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), new JsonSerializerOptions());

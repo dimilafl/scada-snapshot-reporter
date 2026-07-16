@@ -9,7 +9,13 @@ public static class CsvReport
     public static void WriteFindings(string path, IEnumerable<Finding> findings)
     {
         var lines = new List<string> { "Module,Server,Subject,Severity,Message" };
-        lines.AddRange(findings.Select(x => string.Join(",", Escape(x.Module), Escape(x.Server), Escape(x.Subject), Escape(x.Severity.ToString()), Escape(x.Message))));
+        lines.AddRange(findings
+            .OrderByDescending(x => x.Severity)
+            .ThenBy(x => x.Module, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Server, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Subject, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Message, StringComparer.OrdinalIgnoreCase)
+            .Select(x => string.Join(",", Escape(x.Module), Escape(x.Server), Escape(x.Subject), Escape(x.Severity.ToString()), Escape(x.Message))));
         Writing.WriteTextAtomically(path, string.Join(Environment.NewLine, lines) + Environment.NewLine, Encoding.UTF8);
     }
 

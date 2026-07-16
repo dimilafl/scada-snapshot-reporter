@@ -11,7 +11,7 @@ public static class HtmlReport
     {
         var counts = Enum.GetValues<Severity>().Reverse().Select(severity => (severity, count: findings.Count(x => x.Severity == severity)));
         var rows = string.Join(Environment.NewLine, counts.Select(x => $"<tr><td>{x.severity}</td><td>{x.count}</td></tr>"));
-        var findingRows = string.Join(Environment.NewLine, findings.OrderByDescending(x => x.Severity).Select(FindingRow));
+        var findingRows = string.Join(Environment.NewLine, OrderFindings(findings).Select(FindingRow));
         var nav = string.Join(Environment.NewLine, pages.Select(x => $"<a href=\"{Encode(x.href)}\">{Encode(x.label)}</a>"));
         var serverRows = string.Join(Environment.NewLine, findings
             .GroupBy(x => string.IsNullOrWhiteSpace(x.Server) ? "(unknown)" : x.Server, StringComparer.OrdinalIgnoreCase)
@@ -20,6 +20,10 @@ public static class HtmlReport
         var changes = findings
             .Where(x => IsChangeFinding(x.Message))
             .OrderByDescending(x => x.Severity)
+            .ThenBy(x => x.Module, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Server, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Subject, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Message, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var changeRows = string.Join(Environment.NewLine, changes.Select(FindingRow));
         var noIssues = findings.Count == 0 ? "<section class=\"no-issues\">No issues found in this snapshot.</section>" : "";
@@ -43,7 +47,7 @@ public static class HtmlReport
         var properties = typeof(T).GetProperties();
         var header = string.Join("", properties.Select(x => $"<th>{Encode(x.Name)}</th>"));
         var body = string.Join(Environment.NewLine, rows.Select(row => "<tr>" + string.Join("", properties.Select(p => $"<td>{Encode(p.GetValue(row)?.ToString() ?? "")}</td>")) + "</tr>"));
-        var moduleFindings = string.Join(Environment.NewLine, findings.Where(x => x.Module == module).OrderByDescending(x => x.Severity).Select(FindingRow));
+        var moduleFindings = string.Join(Environment.NewLine, OrderFindings(findings.Where(x => x.Module == module)).Select(FindingRow));
 
         WritePage(path, title, $"""
             <p><a href="index.html">Back to summary</a></p>
@@ -56,7 +60,7 @@ public static class HtmlReport
 
     public static void WriteFindingsPage(string path, string title, IEnumerable<Finding> findings, string module)
     {
-        var moduleFindings = string.Join(Environment.NewLine, findings.Where(x => x.Module == module).OrderByDescending(x => x.Severity).Select(FindingRow));
+        var moduleFindings = string.Join(Environment.NewLine, OrderFindings(findings.Where(x => x.Module == module)).Select(FindingRow));
         WritePage(path, title, $"""
             <p><a href="index.html">Back to summary</a></p>
             <h2>Findings</h2>
@@ -81,7 +85,7 @@ public static class HtmlReport
             expectedByName.TryGetValue(name, out var expectedVersion);
             return $"<tr><td>{Encode(name)}</td>{serverCells}<td>{Encode(expectedVersion ?? "")}</td></tr>";
         }));
-        var moduleFindings = string.Join(Environment.NewLine, findings.Where(x => x.Module == "software").OrderByDescending(x => x.Severity).Select(FindingRow));
+        var moduleFindings = string.Join(Environment.NewLine, OrderFindings(findings.Where(x => x.Module == "software")).Select(FindingRow));
         WritePage(path, "Software Version Matrix", $"""
             <p><a href="index.html">Back to summary</a></p>
             <h2>Findings</h2>
@@ -108,7 +112,7 @@ public static class HtmlReport
             expectedByComponent.TryGetValue(component, out var expectedVersion);
             return $"<tr><td>{Encode(component)}</td>{serverCells}<td>{Encode(expectedVersion ?? "")}</td></tr>";
         }));
-        var moduleFindings = string.Join(Environment.NewLine, findings.Where(x => x.Module == "drivers").OrderByDescending(x => x.Severity).Select(FindingRow));
+        var moduleFindings = string.Join(Environment.NewLine, OrderFindings(findings.Where(x => x.Module == "drivers")).Select(FindingRow));
         WritePage(path, "ODBC/OLE DB Matrix", $"""
             <p><a href="index.html">Back to summary</a></p>
             <h2>Findings</h2>
@@ -126,6 +130,14 @@ public static class HtmlReport
 
     private static string FindingRow(Finding x) =>
         $"<tr class=\"sev-{x.Severity.ToString().ToLowerInvariant()}\"><td>{Encode(x.Module)}</td><td>{Encode(x.Server)}</td><td>{Encode(x.Subject)}</td><td>{Encode(x.Severity.ToString())}</td><td>{Encode(x.Message)}</td></tr>";
+
+    private static IOrderedEnumerable<Finding> OrderFindings(IEnumerable<Finding> findings) =>
+        findings
+            .OrderByDescending(x => x.Severity)
+            .ThenBy(x => x.Module, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Server, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Subject, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Message, StringComparer.OrdinalIgnoreCase);
 
     private static void WritePage(string path, string title, string body)
     {

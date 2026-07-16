@@ -246,8 +246,9 @@ public static class Analyzers
         }
     }
 
-    public static IEnumerable<Finding> AnalyzeSqlAgentJobs(IEnumerable<SqlAgentJobRecord> records)
+    public static IEnumerable<Finding> AnalyzeSqlAgentJobs(IEnumerable<SqlAgentJobRecord> records, DateTime? evaluationTime = null)
     {
+        var now = evaluationTime ?? DateTime.UtcNow;
         foreach (var job in records)
         {
             if (!job.Enabled)
@@ -269,7 +270,7 @@ public static class Analyzers
                 yield return Finding.Create("sql_agent_jobs", job.Server, subject, Severity.Medium, "SQL Agent job was cancelled");
             }
 
-            if (TryParseSqlAgentDate(job.LastRunDate, out var lastRun) && DateTime.UtcNow.Subtract(lastRun).TotalHours > 48)
+            if (TryParseSqlAgentDate(job.LastRunDate, out var lastRun) && now.Subtract(lastRun).TotalHours > 48)
             {
                 yield return Finding.Create("sql_agent_jobs", job.Server, subject, Severity.Medium, "SQL Agent job has not run in 48 hours");
             }

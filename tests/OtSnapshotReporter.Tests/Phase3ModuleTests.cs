@@ -19,6 +19,20 @@ public sealed class Phase3ModuleTests
     }
 
     [Fact]
+    public void AnalyzeSqlAgentJobs_UsesExplicitEvaluationTimeForStaleness()
+    {
+        var job = new SqlAgentJobRecord("SRV01", ".", "Nightly ETL", true, "20260101", "020000", 1, 12, "Succeeded", null, null, "svc");
+
+        var findings = Analyzers.AnalyzeSqlAgentJobs(
+            [job],
+            new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc)).ToList();
+
+        var finding = Assert.Single(findings);
+        Assert.Equal(Severity.Medium, finding.Severity);
+        Assert.Contains("48 hours", finding.Message);
+    }
+
+    [Fact]
     public void AnalyzeSsrsSubscriptions_MissingOwner_ProducesHighFinding()
     {
         var subscription = new SsrsSubscriptionRecord("SRV01", ".", "/SCADA/Daily", "Daily", "OLD\\user", false, "Done", null, true);
