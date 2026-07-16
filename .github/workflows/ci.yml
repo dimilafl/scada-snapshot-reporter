@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run public audit
+        shell: pwsh
+        run: .\scripts\public_audit.ps1
+
+      - name: Validate configuration
+        shell: pwsh
+        run: .\tests\Invoke-ConfigValidation.ps1
+
+      - name: Restore .NET projects
+        run: dotnet restore .\tests\OtSnapshotReporter.Tests\OtSnapshotReporter.Tests.csproj
+
+      - name: Restore GUI project
+        run: dotnet restore .\src\OtSnapshotGui\OtSnapshotGui.csproj
+
+      - name: Build reporter
+        run: dotnet build .\src\OtSnapshotReporter\OtSnapshotReporter.csproj --configuration Release --no-restore
+
+      - name: Build GUI
+        run: dotnet build .\src\OtSnapshotGui\OtSnapshotGui.csproj --configuration Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test .\tests\OtSnapshotReporter.Tests\OtSnapshotReporter.Tests.csproj --configuration Release --no-restore
+
+      - name: Run smoke tests
+        shell: pwsh
+        run: .\tests\Invoke-SmokeTests.ps1

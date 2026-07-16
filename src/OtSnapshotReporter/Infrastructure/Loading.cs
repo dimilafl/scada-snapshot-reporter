@@ -68,24 +68,61 @@ public static class Loading
         var groupedFiles = serverDirs
             .SelectMany(sd => Directory.GetFiles(sd.Raw, "*.json"))
             .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
+        var mergedErrorItems = new List<JsonElement>();
 
         foreach (var group in groupedFiles)
         {
             var mergedItems = new List<JsonElement>();
             foreach (var file in group)
             {
-                using var document = JsonDocument.Parse(File.ReadAllText(file));
-                if (document.RootElement.ValueKind == JsonValueKind.Array)
+                var server = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file)) ?? "unknown") ?? "unknown";
+                try
                 {
-                    mergedItems.AddRange(document.RootElement.EnumerateArray().Select(x => x.Clone()));
+                    using var document = JsonDocument.Parse(File.ReadAllText(file));
+                    if (document.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        mergedItems.AddRange(document.RootElement.EnumerateArray().Select(x => x.Clone()));
+                    }
+                    else
+                    {
+                        mergedItems.Add(document.RootElement.Clone());
+                    }
                 }
-                else
+                catch (JsonException ex)
                 {
-                    mergedItems.Add(document.RootElement.Clone());
+                    Console.Error.WriteLine($"Warning: Failed to merge {file}: {ex.Message}");
+                    mergedErrorItems.Add(JsonSerializer.SerializeToElement(new
+                    {
+                        server,
+                        error = $"Failed to parse {Path.GetFileName(file)}: {ex.Message}",
+                        run = DateTime.Now.ToString("s")
+                    }));
+                }
+                catch (IOException ex)
+                {
+                    Console.Error.WriteLine($"Warning: Cannot merge {file}: {ex.Message}");
+                    mergedErrorItems.Add(JsonSerializer.SerializeToElement(new
+                    {
+                        server,
+                        error = $"Cannot read {Path.GetFileName(file)}: {ex.Message}",
+                        run = DateTime.Now.ToString("s")
+                    }));
                 }
             }
 
-            File.WriteAllText(Path.Combine(mergedDir, group.Key ?? "unknown.json"), JsonSerializer.Serialize(mergedItems, new JsonSerializerOptions { WriteIndented = true }));
+            if (string.Equals(group.Key, "_errors.json", StringComparison.OrdinalIgnoreCase))
+            {
+                mergedErrorItems.AddRange(mergedItems);
+            }
+            else
+            {
+                File.WriteAllText(Path.Combine(mergedDir, group.Key ?? "unknown.json"), JsonSerializer.Serialize(mergedItems, new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+
+        if (mergedErrorItems.Count > 0)
+        {
+            File.WriteAllText(Path.Combine(mergedDir, "_errors.json"), JsonSerializer.Serialize(mergedErrorItems, new JsonSerializerOptions { WriteIndented = true }));
         }
 
         return mergedDir;

@@ -24,8 +24,23 @@ public sealed record PreviousSnapshot(
 
 public sealed record ModuleDescriptor(string ModuleKey, string DisplayName, string HtmlFile, string RawJsonFile, string? ExpectedConfigFile, bool HasMatrixLayout);
 
-public sealed record AppOptions(string InputPath, string ConfigPath, string OutputPath, string? PreviousPath, bool AcceptBaseline)
+public sealed record AppOptions(string InputPath, string ConfigPath, string OutputPath, string? PreviousPath, bool AcceptBaseline, bool HelpRequested)
 {
+    public static string Usage => """
+        OT Snapshot Reporter
+
+        Usage:
+          dotnet run --project .\src\OtSnapshotReporter -- [options]
+
+        Options:
+          --input <path>       Snapshot input folder, raw folder, or per-server collection root.
+          --config <path>      Configuration folder. Default: .\config
+          --output <path>      Report output folder. Default: .\Output
+          --previous <path>    Previous snapshot folder for drift comparison.
+          --accept-baseline    Rewrite expected service/task/software/driver baselines.
+          --help, -h           Show this help text.
+        """;
+
     public static AppOptions Parse(string[] args)
     {
         var input = ".";
@@ -33,34 +48,47 @@ public sealed record AppOptions(string InputPath, string ConfigPath, string Outp
         var output = ".\\Output";
         string? previous = null;
         var acceptBaseline = false;
+        var helpRequested = false;
 
         for (var i = 0; i < args.Length; i++)
         {
-            var value = i + 1 < args.Length ? args[i + 1] : null;
             switch (args[i])
             {
-                case "--input" when value is not null:
-                    input = value;
-                    i++;
+                case "--input":
+                    input = ReadValue(args, ref i, "--input");
                     break;
-                case "--config" when value is not null:
-                    config = value;
-                    i++;
+                case "--config":
+                    config = ReadValue(args, ref i, "--config");
                     break;
-                case "--output" when value is not null:
-                    output = value;
-                    i++;
+                case "--output":
+                    output = ReadValue(args, ref i, "--output");
                     break;
-                case "--previous" when value is not null:
-                    previous = value;
-                    i++;
+                case "--previous":
+                    previous = ReadValue(args, ref i, "--previous");
                     break;
                 case "--accept-baseline":
                     acceptBaseline = true;
                     break;
+                case "--help":
+                case "-h":
+                    helpRequested = true;
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown option '{args[i]}'. Use --help to see supported options.");
             }
         }
 
-        return new AppOptions(input, config, output, previous, acceptBaseline);
+        return new AppOptions(input, config, output, previous, acceptBaseline, helpRequested);
+    }
+
+    private static string ReadValue(string[] args, ref int index, string option)
+    {
+        if (index + 1 >= args.Length || args[index + 1].StartsWith("-", StringComparison.Ordinal))
+        {
+            throw new ArgumentException($"{option} requires a value.");
+        }
+
+        index++;
+        return args[index];
     }
 }

@@ -7,8 +7,25 @@ using OtSnapshotReporter.Infrastructure;
 using OtSnapshotReporter.Models;
 using OtSnapshotReporter.Reporting;
 
-var options = AppOptions.Parse(args);
-var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmm", CultureInfo.InvariantCulture);
+AppOptions options;
+try
+{
+    options = AppOptions.Parse(args);
+}
+catch (ArgumentException ex)
+{
+    Console.Error.WriteLine($"Error: {ex.Message}");
+    Console.Error.WriteLine(AppOptions.Usage);
+    return 2;
+}
+
+if (options.HelpRequested)
+{
+    Console.WriteLine(AppOptions.Usage);
+    return 0;
+}
+
+var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
 var reportRoot = Path.Combine(options.OutputPath, runStamp);
 var rawOutput = Path.Combine(reportRoot, "raw");
 
@@ -79,7 +96,7 @@ if (options.AcceptBaseline)
 {
     Writing.WriteBaselineConfigs(options.ConfigPath, services, tasks, software, drivers);
     Console.WriteLine("Baseline configs updated from current snapshot.");
-    return;
+    return 0;
 }
 
 if (findings.Count == 0)
@@ -108,3 +125,4 @@ CsvReport.WriteFindings(Path.Combine(reportRoot, "exceptions.csv"), findings);
 Writing.WriteSummaryJson(Path.Combine(reportRoot, "summary.json"), reportRoot, findings);
 
 Console.WriteLine($"Report written to {reportRoot}");
+return 0;

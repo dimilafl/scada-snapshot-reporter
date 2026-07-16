@@ -69,6 +69,10 @@ dotnet test .\tests\OtSnapshotReporter.Tests\OtSnapshotReporter.Tests.csproj
 .\tests\Invoke-SmokeTests.ps1
 ```
 
+Show command-line options with `dotnet run --project .\src\OtSnapshotReporter -- --help`.
+Before committing, run `.\scripts\public_audit.ps1` and
+`.\tests\Invoke-ConfigValidation.ps1`. Pull requests also run these checks in GitHub Actions.
+
 ## Deployment (Air-Gapped / OT)
 
 ```powershell
