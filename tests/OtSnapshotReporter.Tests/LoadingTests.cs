@@ -5,6 +5,29 @@ namespace OtSnapshotReporter.Tests;
 public sealed class LoadingTests
 {
     [Fact]
+    public void LoadServersConfig_NormalizesNamesAndRejectsUnusableEntries()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-servers-config-test-" + Guid.NewGuid());
+        var path = Path.Combine(root, "servers.json");
+        try
+        {
+            Directory.CreateDirectory(root);
+            File.WriteAllText(path, "{\"servers\":[{\"name\":\" server-a \",\"roles\":[]},{\"name\":\"SERVER-A\"},{\"name\":\"server-b\"},{\"name\":\"\"},null]}");
+
+            var config = Loading.LoadServersConfig(path, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Assert.Equal(new[] { "server-a", "server-b" }, config.Servers.Select(server => server.Name));
+            File.WriteAllText(path, "{\"servers\":null}");
+            var exception = Assert.Throws<InvalidDataException>(() => Loading.LoadServersConfig(path, new JsonSerializerOptions()));
+            Assert.Contains("servers.json", exception.Message);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void LoadJson_FileNotFound_ReturnsNull()
     {
         var result = Loading.LoadJson<ServiceRecord>(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), new JsonSerializerOptions());

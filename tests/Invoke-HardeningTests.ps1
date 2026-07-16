@@ -708,6 +708,28 @@ Test-Case "Engine rejects a corrupt servers config" {
     if (Test-Path $reportDir) { throw "Corrupt servers config created report output" }
 }
 
+Test-Case "Engine rejects an unusable servers config" {
+    $configDir = Join-Path $OutputRoot 'blank-servers-config'
+    $reportDir = Join-Path $OutputRoot 'blank-servers-report'
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    Copy-Item .\config\* -Destination $configDir -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $configDir 'servers.json') -Value '{"servers":[{"name":""},null]}' -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $configDir --output $reportDir 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected unusable servers config to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'at least one non-empty server name') { throw "Expected unusable servers config error" }
+    if (Test-Path $reportDir) { throw "Unusable servers config created report output" }
+}
+
 Test-Case "Engine rejects a corrupt expected config" {
     $configDir = Join-Path $OutputRoot 'corrupt-expected-config'
     $reportDir = Join-Path $OutputRoot 'corrupt-expected-report'

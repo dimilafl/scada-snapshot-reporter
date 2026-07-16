@@ -100,15 +100,15 @@ if (thresholdErrors.Count > 0)
 }
 
 var serversPath = Path.Combine(options.ConfigPath, "servers.json");
-var configuredServers = new ServersConfig();
-if (File.Exists(serversPath))
+ServersConfig configuredServers;
+try
 {
-    configuredServers = Loading.LoadJson<ServersConfig>(serversPath, json);
-    if (configuredServers is null)
-    {
-        Console.Error.WriteLine($"Error: Config file is invalid: {serversPath}");
-        return 1;
-    }
+    configuredServers = Loading.LoadServersConfig(serversPath, json);
+}
+catch (InvalidDataException ex)
+{
+    Console.Error.WriteLine($"Error: {ex.Message}");
+    return 1;
 }
 
 ExpectedServicesConfig expectedServices;

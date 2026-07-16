@@ -12,6 +12,7 @@ As of 2026-07-16, the public tree has also addressed the following follow-on ris
 
 - Phase 3 records (ODBC DSNs, certificates, SQL Agent jobs, and SSRS subscriptions) are loaded into `PreviousSnapshot` and compared for additions, removals, and field changes.
 - Phase 3 loaders enforce the identity fields required by their report and drift keys; certificate keys include the certificate store so the same certificate in different stores is not collapsed.
+- `servers.json` is validated before report allocation: names are trimmed and deduplicated, while missing, scalar, null, empty, and all-blank server arrays fail with actionable errors.
 - C# report writes use unique temporary and backup names, replace existing files atomically, and remove only stale generated artifacts. The GUI uses the same pattern for settings and `servers.json`.
 - GUI defaults discover the repository layout from `config/servers.json` and the collector runner, then search common engine build and publish locations. Existing saved settings and manual path controls remain authoritative.
 

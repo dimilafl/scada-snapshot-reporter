@@ -86,6 +86,67 @@ public static class Loading
         }
     }
 
+    public static ServersConfig LoadServersConfig(string path, JsonSerializerOptions options)
+    {
+        if (!File.Exists(path))
+        {
+            return new ServersConfig();
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.EnumerateObject().Any(property => string.Equals(property.Name, "servers", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidDataException("servers.json must contain a 'servers' array of objects with names.");
+            }
+
+            var serversProperty = document.RootElement.EnumerateObject()
+                .First(property => string.Equals(property.Name, "servers", StringComparison.OrdinalIgnoreCase));
+            if (serversProperty.Value.ValueKind != JsonValueKind.Array)
+            {
+                throw new InvalidDataException("servers.json must contain a 'servers' array of objects with names.");
+            }
+
+            if (serversProperty.Value.GetArrayLength() == 0)
+            {
+                throw new InvalidDataException("servers.json must contain at least one non-empty server name.");
+            }
+        }
+        catch (InvalidDataException)
+        {
+            throw;
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"Config file is invalid: {path}", ex);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new InvalidDataException($"Config file is invalid: {path}", ex);
+        }
+
+        var loaded = LoadJson<ServersConfig>(path, options);
+        if (loaded?.Servers is null)
+        {
+            throw new InvalidDataException("servers.json must contain a 'servers' array of objects with names.");
+        }
+
+        var normalized = loaded.Servers
+            .Where(server => server is not null && !string.IsNullOrWhiteSpace(server.Name))
+            .Select(server => new ConfiguredServer(server!.Name.Trim(), server.Roles))
+            .GroupBy(server => server.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+        if (normalized.Count == 0)
+        {
+            throw new InvalidDataException("servers.json must contain at least one non-empty server name.");
+        }
+
+        return new ServersConfig(normalized);
+    }
+
     public static string ResolveRawRoot(string inputPath, string outputPath)
     {
         var single = Path.Combine(inputPath, "raw");
