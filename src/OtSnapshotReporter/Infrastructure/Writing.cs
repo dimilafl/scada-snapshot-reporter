@@ -9,7 +9,12 @@ public static class Writing
 {
     public static void WriteTextAtomically(string path, string contents, Encoding? encoding = null)
     {
-        var tempPath = path + ".tmp";
+        var fullPath = Path.GetFullPath(path);
+        var directory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory();
+        var leaf = Path.GetFileName(fullPath);
+        RemoveStaleAtomicArtifacts(directory, leaf);
+        var tempPath = Path.Combine(directory, $"{leaf}.{Guid.NewGuid():N}.tmp");
+        var backupPath = Path.Combine(directory, $"{leaf}.{Guid.NewGuid():N}.bak");
         try
         {
             if (encoding is null)
@@ -21,20 +26,77 @@ public static class Writing
                 File.WriteAllText(tempPath, contents, encoding);
             }
 
-            File.Move(tempPath, path, overwrite: true);
+            if (File.Exists(fullPath))
+            {
+                File.Replace(tempPath, fullPath, backupPath, ignoreMetadataErrors: true);
+                TryDeleteAtomicArtifact(backupPath);
+            }
+            else
+            {
+                File.Move(tempPath, fullPath);
+            }
         }
         catch
         {
-            try
-            {
-                File.Delete(tempPath);
-            }
-            catch
-            {
-                // Preserve the original write failure; the temporary file can be retried later.
-            }
+            TryDeleteAtomicArtifact(tempPath);
+            TryDeleteAtomicArtifact(backupPath);
 
             throw;
+        }
+    }
+
+    private static void RemoveStaleAtomicArtifacts(string directory, string leaf)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-1);
+        try
+        {
+            foreach (var artifact in Directory.GetFiles(directory))
+            {
+                var name = Path.GetFileName(artifact);
+                if (!name.StartsWith(leaf + ".", StringComparison.OrdinalIgnoreCase) ||
+                    (!name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) && !name.EndsWith(".bak", StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                DateTime lastWrite;
+                try
+                {
+                    lastWrite = File.GetLastWriteTimeUtc(artifact);
+                }
+                catch (IOException)
+                {
+                    continue;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    continue;
+                }
+
+                if (lastWrite < cutoff)
+                {
+                    TryDeleteAtomicArtifact(artifact);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"WARNING: Could not inspect atomic artifacts under {directory}: {ex.Message}");
+        }
+    }
+
+    private static void TryDeleteAtomicArtifact(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Preserve the report write result; stale artifacts are safe to retry later.
         }
     }
 

@@ -5,10 +5,10 @@ namespace OtSnapshotGui;
 
 internal sealed class GuiSettings
 {
-    [JsonPropertyName("config_path")] public string ConfigPath { get; set; } = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "config"));
-    [JsonPropertyName("output_root")] public string OutputRoot { get; set; } = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Output"));
-    [JsonPropertyName("collector_script")] public string CollectorScript { get; set; } = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "collectors", "Run-Collectors.ps1"));
-    [JsonPropertyName("engine_exe")] public string EngineExe { get; set; } = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "OtSnapshotReporter", "bin", "Release", "net8.0", "win-x64", "publish", "OtSnapshotReporter.exe"));
+    [JsonPropertyName("config_path")] public string ConfigPath { get; set; } = GuiPathDefaults.ConfigPath;
+    [JsonPropertyName("output_root")] public string OutputRoot { get; set; } = GuiPathDefaults.OutputRoot;
+    [JsonPropertyName("collector_script")] public string CollectorScript { get; set; } = GuiPathDefaults.CollectorScript;
+    [JsonPropertyName("engine_exe")] public string EngineExe { get; set; } = GuiPathDefaults.EnginePath;
     [JsonPropertyName("last_report_path")] public string LastReportPath { get; set; } = "";
 
     public static string SettingsPath => Path.Combine(AppContext.BaseDirectory, "gui-settings.json");
@@ -32,27 +32,51 @@ internal sealed class GuiSettings
 
     public void Save()
     {
-        var tempPath = SettingsPath + ".tmp";
-        try
-        {
-            File.WriteAllText(tempPath, JsonSerializer.Serialize(this, JsonOptions()));
-            using var document = JsonDocument.Parse(File.ReadAllText(tempPath));
-            File.Move(tempPath, SettingsPath, overwrite: true);
-        }
-        catch
-        {
-            try
-            {
-                File.Delete(tempPath);
-            }
-            catch
-            {
-                // Preserve the original save failure; the temporary file is harmless and can be retried.
-            }
-
-            throw;
-        }
+        var contents = JsonSerializer.Serialize(this, JsonOptions());
+        using var document = JsonDocument.Parse(contents);
+        AtomicFile.WriteText(SettingsPath, contents);
     }
 
     private static JsonSerializerOptions JsonOptions() => new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
+}
+
+internal static class GuiPathDefaults
+{
+    public static string RepositoryRoot { get; } = FindRepositoryRoot();
+    public static string ConfigPath => Path.Combine(RepositoryRoot, "config");
+    public static string OutputRoot => Path.Combine(RepositoryRoot, "Output");
+    public static string CollectorScript => Path.Combine(RepositoryRoot, "collectors", "Run-Collectors.ps1");
+    public static string EnginePath => FindEnginePath();
+
+    private static string FindRepositoryRoot()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "collectors", "Run-Collectors.ps1")) &&
+                File.Exists(Path.Combine(current.FullName, "config", "servers.json")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+    }
+
+    private static string FindEnginePath()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(RepositoryRoot, "src", "OtSnapshotReporter", "bin", "Release", "net8.0", "win-x64", "publish", "OtSnapshotReporter.exe"),
+            Path.Combine(RepositoryRoot, "src", "OtSnapshotReporter", "bin", "Release", "net8.0", "win-x64", "publish", "OtSnapshotReporter.dll"),
+            Path.Combine(RepositoryRoot, "src", "OtSnapshotReporter", "bin", "Release", "net8.0", "OtSnapshotReporter.exe"),
+            Path.Combine(RepositoryRoot, "src", "OtSnapshotReporter", "bin", "Release", "net8.0", "OtSnapshotReporter.dll"),
+            Path.Combine(AppContext.BaseDirectory, "OtSnapshotReporter.exe"),
+            Path.Combine(AppContext.BaseDirectory, "OtSnapshotReporter.dll")
+        };
+
+        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
+    }
 }

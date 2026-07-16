@@ -196,27 +196,9 @@ internal sealed class MainForm : Form
         var servers = new JsonArray();
         foreach (var item in _servers.Items) servers.Add(new JsonObject { ["name"] = item.ToString(), ["roles"] = new JsonArray() });
         var path = ServersPath();
-        var tmpPath = path + ".tmp";
         var json = new JsonObject { ["servers"] = servers }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        try
-        {
-            File.WriteAllText(tmpPath, json);
-            JsonNode.Parse(File.ReadAllText(tmpPath));
-            File.Move(tmpPath, path, overwrite: true);
-        }
-        catch
-        {
-            try
-            {
-                File.Delete(tmpPath);
-            }
-            catch
-            {
-                // Preserve the original save failure; the temporary file can be retried later.
-            }
-
-            throw;
-        }
+        JsonNode.Parse(json);
+        AtomicFile.WriteText(path, json);
     }
 
     private void AddServer()

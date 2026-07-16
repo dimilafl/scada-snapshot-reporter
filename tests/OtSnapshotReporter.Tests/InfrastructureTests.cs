@@ -142,6 +142,40 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public void WriteTextAtomically_CleansStaleArtifactsAndPreservesRecentOnes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-atomic-retention-test-" + Guid.NewGuid());
+        var path = Path.Combine(root, "report.txt");
+        var staleTemp = path + ".old.tmp";
+        var staleBackup = path + ".old.bak";
+        var recentTemp = path + ".recent.tmp";
+        var recentBackup = path + ".recent.bak";
+        try
+        {
+            Directory.CreateDirectory(root);
+            File.WriteAllText(path, "old");
+            File.WriteAllText(staleTemp, "stale");
+            File.WriteAllText(staleBackup, "stale");
+            File.WriteAllText(recentTemp, "recent");
+            File.WriteAllText(recentBackup, "recent");
+            File.SetLastWriteTimeUtc(staleTemp, DateTime.UtcNow.AddDays(-2));
+            File.SetLastWriteTimeUtc(staleBackup, DateTime.UtcNow.AddDays(-2));
+
+            Writing.WriteTextAtomically(path, "new");
+
+            Assert.Equal("new", File.ReadAllText(path));
+            Assert.False(File.Exists(staleTemp));
+            Assert.False(File.Exists(staleBackup));
+            Assert.True(File.Exists(recentTemp));
+            Assert.True(File.Exists(recentBackup));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void CleanupOldSnapshots_ContinuesWhenOneFolderIsLocked()
     {
         var root = Path.Combine(Path.GetTempPath(), "ot-retention-test-" + Guid.NewGuid());

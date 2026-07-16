@@ -6,6 +6,19 @@ Date: 2026-06-03 | Base commit: `a550fe8`
 
 ---
 
+## Current Implementation Notes
+
+As of 2026-07-16, the public tree has also addressed the following follow-on risks:
+
+- Phase 3 records (ODBC DSNs, certificates, SQL Agent jobs, and SSRS subscriptions) are loaded into `PreviousSnapshot` and compared for additions, removals, and field changes.
+- Phase 3 loaders enforce the identity fields required by their report and drift keys; certificate keys include the certificate store so the same certificate in different stores is not collapsed.
+- C# report writes use unique temporary and backup names, replace existing files atomically, and remove only stale generated artifacts. The GUI uses the same pattern for settings and `servers.json`.
+- GUI defaults discover the repository layout from `config/servers.json` and the collector runner, then search common engine build and publish locations. Existing saved settings and manual path controls remain authoritative.
+
+The remaining design debt below is intentionally scoped: module registration and versioned JSON schemas would reduce future maintenance cost, but the current explicit orchestration remains behaviorally covered by the hardening suite.
+
+---
+
 ## Historical Findings
 
 ### 1. `LoadPreviousSnapshot` excludes Phase 2 modules â€” no diff detection
