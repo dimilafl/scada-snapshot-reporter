@@ -569,6 +569,27 @@ Test-Case "Invoke-PerServer retries timeouts and records final error" {
     }
 }
 
+Test-Case "Backup collector bounds recursive file enumeration" {
+    $boundedRoot = Join-Path $OutputRoot 'bounded-backup-scan'
+    $filesPath = Join-Path $boundedRoot 'files'
+    New-Item -ItemType Directory -Path $filesPath -Force | Out-Null
+    1..3 | ForEach-Object { Set-Content -LiteralPath (Join-Path $filesPath "file-$_.bak") -Value $_ }
+
+    . .\collectors\CollectorHelpers.ps1
+    $scan = Get-BoundedFiles -Path $filesPath -MaxFiles 2
+    if (@($scan.Files).Count -ne 2) { throw "Expected bounded scan to retain two files" }
+    if (-not $scan.Truncated) { throw "Expected bounded scan to report truncation" }
+
+    $configPath = Join-Path $boundedRoot 'config'
+    $collectorOutput = Join-Path $boundedRoot 'collector-output'
+    New-Item -ItemType Directory -Path $configPath -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $configPath 'servers.json') -Value '{"servers":[{"name":"localhost","roles":[]}]}' -Encoding UTF8
+    @{ paths = @(@{ name = 'BoundedBackup'; path = $filesPath; max_age_hours = 24 }) } |
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $configPath 'expected_paths.json') -Encoding UTF8
+    .\collectors\Collect-BackupFreshness.ps1 -ConfigPath $configPath -OutputPath $collectorOutput -MaxFiles 2 | Out-Null
+    Assert-FileExists (Join-Path $collectorOutput 'raw\backup_freshness.json')
+}
+
 Test-Case "RedactPaths hides path-bearing collector fields" {
     $redactRoot = Join-Path (Resolve-Path $OutputRoot).Path 'redact-backup'
     $files = Join-Path $redactRoot 'files'

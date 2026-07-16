@@ -35,6 +35,22 @@ function Ensure-Directory {
     }
 }
 
+function Get-BoundedFiles {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+
+        [ValidateRange(1, 1000000)]
+        [int] $MaxFiles = 50000
+    )
+
+    $candidates = @(Get-ChildItem -Path $Path -File -Recurse -Depth 4 -ErrorAction Stop | Select-Object -First ($MaxFiles + 1))
+    [pscustomobject]@{
+        files = @($candidates | Select-Object -First $MaxFiles)
+        truncated = $candidates.Count -gt $MaxFiles
+    }
+}
+
 function Write-JsonOutput {
     param(
         [object] $Data,
@@ -103,7 +119,7 @@ function Invoke-PerServer {
     $runTime = Get-Date -Format "yyyy-MM-ddTHH:mm:ss"
     $scriptText = $ScriptBlock.ToString()
     $callerVariables = @{}
-    foreach ($name in @('ConfigPath', 'OutputPath', 'PSScriptRoot', 'RedactPaths', 'redactPathValues', 'registryPaths', 'logConfigs', 'windowHours', 'now')) {
+    foreach ($name in @('ConfigPath', 'OutputPath', 'PSScriptRoot', 'RedactPaths', 'redactPathValues', 'registryPaths', 'logConfigs', 'windowHours', 'now', 'maxFiles')) {
         $variable = Get-Variable -Name $name -Scope 1 -ErrorAction SilentlyContinue
         if ($null -ne $variable) {
             $callerVariables[$name] = $variable.Value

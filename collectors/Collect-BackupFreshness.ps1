@@ -1,18 +1,21 @@
 ﻿param(
     [string] $ConfigPath = ".\config",
     [string] $OutputPath = ".\Output\manual-run",
-    [switch] $RedactPaths
+    [switch] $RedactPaths,
+    [ValidateRange(1, 1000000)]
+    [int] $MaxFiles = 50000
 )
 
 . "$PSScriptRoot\CollectorHelpers.ps1"
 
 $servers = Get-ConfiguredServers -ConfigPath $ConfigPath
 $redactPathValues = [bool]$RedactPaths
+$maxFiles = $MaxFiles
 $data = Invoke-PerServer -Servers $servers -OutputPath $OutputPath -ScriptBlock {
     param($server)
 
     Invoke-ServerScript -Server $server -ScriptBlock {
-        param($recordServer, $configPath, $redactPaths)
+        param($recordServer, $configPath, $redactPaths, $fileLimit)
 
         $pathsFile = Join-Path $configPath 'expected_paths.json'
         $paths = @()
@@ -31,13 +34,12 @@ $data = Invoke-PerServer -Servers $servers -OutputPath $OutputPath -ScriptBlock 
             try {
                 $exists = Test-Path -Path $expectedPath.path -ErrorAction Stop
                 if ($exists) {
-                    $allFiles = @(Get-ChildItem -Path $expectedPath.path -File -Recurse -Depth 4 -ErrorAction Stop)
-                    if ($allFiles.Count -gt 50000) {
-                        Write-Warning "Path '$($expectedPath.path)' contains $($allFiles.Count) files; truncating to 50000 for performance"
+                    $scan = Get-BoundedFiles -Path $expectedPath.path -MaxFiles $fileLimit
+                    if ($scan.truncated) {
+                        Write-Warning "Path '$($expectedPath.path)' contains more than $fileLimit files; truncating to $fileLimit for performance"
                     }
 
-                    $newest = $allFiles |
-                        Select-Object -First 50000 |
+                    $newest = @($scan.files) |
                         Sort-Object LastWriteTime -Descending |
                         Select-Object -First 1
 
@@ -69,7 +71,7 @@ $data = Invoke-PerServer -Servers $servers -OutputPath $OutputPath -ScriptBlock 
             }
             $result
         }
-    } -ArgumentList $server, $ConfigPath, $redactPathValues
+    } -ArgumentList $server, $ConfigPath, $redactPathValues, $maxFiles
 }
 
 Write-JsonOutput -Data $data -Path (Join-Path $OutputPath 'raw\backup_freshness.json')
