@@ -72,6 +72,42 @@ function Get-BoundedFiles {
     }
 }
 
+function Remove-StaleAtomicArtifacts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    $directory = Split-Path -Path $Path -Parent
+    if ([string]::IsNullOrWhiteSpace($directory)) {
+        $directory = (Get-Location).Path
+    }
+
+    $leaf = Split-Path -Path $Path -Leaf
+    $prefix = "$leaf."
+    $cutoff = (Get-Date).ToUniversalTime().AddDays(-1)
+    try {
+        foreach ($item in @(Get-ChildItem -LiteralPath $directory -File -Force -ErrorAction Stop)) {
+            $isGeneratedArtifact = $item.Name.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase) -and
+                ($item.Name.EndsWith('.tmp', [System.StringComparison]::OrdinalIgnoreCase) -or
+                    $item.Name.EndsWith('.bak', [System.StringComparison]::OrdinalIgnoreCase))
+            if (-not $isGeneratedArtifact -or $item.LastWriteTimeUtc -ge $cutoff) {
+                continue
+            }
+
+            try {
+                Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Stop
+            }
+            catch {
+                Write-Verbose "Could not remove stale atomic artifact '$($item.FullName)': $($_.Exception.Message)"
+            }
+        }
+    }
+    catch {
+        Write-Verbose "Could not inspect atomic artifacts under '$directory': $($_.Exception.Message)"
+    }
+}
+
 function Write-TextAtomically {
     param(
         [Parameter(Mandatory = $true)]
@@ -81,6 +117,7 @@ function Write-TextAtomically {
         [string] $Contents
     )
 
+    Remove-StaleAtomicArtifacts -Path $Path
     $tempId = [guid]::NewGuid().ToString('N')
     $tempPath = "$Path.$tempId.tmp"
     $backupPath = "$Path.$tempId.bak"

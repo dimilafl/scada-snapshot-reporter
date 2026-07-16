@@ -181,6 +181,17 @@ exit 0
 Test-Case "Collector JSON output is atomic and valid" {
     . .\collectors\CollectorHelpers.ps1
     $atomicOutput = Join-Path $OutputRoot 'atomic-output\raw\probe.json'
+    $atomicDirectory = Split-Path -Path $atomicOutput -Parent
+    New-Item -ItemType Directory -Path $atomicDirectory -Force | Out-Null
+    $staleTemp = Join-Path $atomicDirectory 'probe.json.stale.tmp'
+    $staleBackup = Join-Path $atomicDirectory 'probe.json.stale.bak'
+    $recentTemp = Join-Path $atomicDirectory 'probe.json.recent.tmp'
+    Set-Content -LiteralPath $staleTemp -Value 'stale' -Encoding UTF8
+    Set-Content -LiteralPath $staleBackup -Value 'stale' -Encoding UTF8
+    Set-Content -LiteralPath $recentTemp -Value 'recent' -Encoding UTF8
+    [System.IO.File]::SetLastWriteTimeUtc($staleTemp, [DateTime]::UtcNow.AddDays(-2))
+    [System.IO.File]::SetLastWriteTimeUtc($staleBackup, [DateTime]::UtcNow.AddDays(-2))
+
     Write-JsonOutput -Data @([pscustomobject]@{ server = 'localhost'; value = 'complete' }) -Path $atomicOutput
 
     $rows = @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $atomicOutput -Raw))
@@ -188,11 +199,13 @@ Test-Case "Collector JSON output is atomic and valid" {
         throw "Atomic collector output was not valid JSON"
     }
 
-    $tempFiles = @(Get-ChildItem -LiteralPath (Split-Path -Path $atomicOutput -Parent) -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -like '*.tmp' -or $_.Name -like '*.bak' })
-    if ($tempFiles.Count -gt 0) {
-        throw "Atomic collector output left temporary files behind"
+    if ((Test-Path -LiteralPath $staleTemp -PathType Leaf) -or (Test-Path -LiteralPath $staleBackup -PathType Leaf)) {
+        throw "Stale atomic artifacts were not removed"
     }
+    if (-not (Test-Path -LiteralPath $recentTemp -PathType Leaf)) {
+        throw "Recent atomic artifacts were removed unexpectedly"
+    }
+    Remove-Item -LiteralPath $recentTemp -Force
 }
 
 Test-Case "Collector helper normalizes configured servers" {
