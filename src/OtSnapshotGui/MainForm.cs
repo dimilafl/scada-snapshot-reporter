@@ -308,14 +308,17 @@ internal sealed class MainForm : Form
             SetStatus("Generating report...");
             await RunProcessAsync(EngineHost(), EngineArgs(inputPath));
             var latest = LatestReportFolder();
-            if (latest is not null)
+            if (latest is null)
             {
-                _settings.LastReportPath = latest;
-                _settings.Save();
-                UpdateBadges(latest);
-                _viewButton.Enabled = File.Exists(Path.Combine(latest, "index.html"));
-                SetStatus($"Report ready: {latest}");
+                SetStatus("Report process completed, but no report folder was found.");
+                return;
             }
+
+            _settings.LastReportPath = latest;
+            _settings.Save();
+            UpdateBadges(latest);
+            _viewButton.Enabled = File.Exists(Path.Combine(latest, "index.html"));
+            SetStatus($"Report ready: {latest}");
         }
         catch (Exception ex)
         {
@@ -357,25 +360,43 @@ internal sealed class MainForm : Form
     {
         var counts = _badges.Keys.ToDictionary(x => x, _ => 0, StringComparer.OrdinalIgnoreCase);
         var summaryPath = Path.Combine(reportDir, "summary.json");
+        var loaded = false;
         if (File.Exists(summaryPath))
         {
-            var json = File.ReadAllText(summaryPath);
-            var doc = JsonNode.Parse(json);
-            var jsonCounts = doc?["counts"];
-            foreach (var severity in _badges.Keys)
+            try
             {
-                counts[severity] = jsonCounts?[severity]?.GetValue<int>() ?? 0;
+                var doc = JsonNode.Parse(File.ReadAllText(summaryPath));
+                var jsonCounts = doc?["counts"] ?? throw new JsonException("Summary is missing counts.");
+                foreach (var severity in _badges.Keys)
+                {
+                    counts[severity] = jsonCounts[severity]?.GetValue<int>() ?? 0;
+                }
+
+                loaded = true;
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException or IOException or UnauthorizedAccessException)
+            {
+                foreach (var severity in _badges.Keys) counts[severity] = 0;
+                AppendLine($"WARNING: Could not read report summary: {ex.Message}");
             }
         }
-        else
+
+        if (!loaded)
         {
             var exceptionsPath = Path.Combine(reportDir, "exceptions.csv");
             if (File.Exists(exceptionsPath))
             {
-                foreach (var line in File.ReadLines(exceptionsPath).Skip(1))
+                try
                 {
-                    var cells = SplitCsv(line);
-                    if (cells.Count >= 4 && counts.ContainsKey(cells[3])) counts[cells[3]]++;
+                    foreach (var line in File.ReadLines(exceptionsPath).Skip(1))
+                    {
+                        var cells = SplitCsv(line);
+                        if (cells.Count >= 4 && counts.ContainsKey(cells[3])) counts[cells[3]]++;
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    AppendLine($"WARNING: Could not read report exceptions: {ex.Message}");
                 }
             }
         }
@@ -450,9 +471,23 @@ internal sealed class MainForm : Form
         yield return _outputRoot.Text;
     }
 
-    private string? LatestReportFolder() => Directory.Exists(_outputRoot.Text)
-        ? Directory.GetDirectories(_outputRoot.Text).Where(x => File.Exists(Path.Combine(x, "index.html"))).OrderByDescending(Path.GetFileName).FirstOrDefault()
-        : null;
+    private string? LatestReportFolder()
+    {
+        if (!Directory.Exists(_outputRoot.Text)) return null;
+
+        try
+        {
+            return Directory.GetDirectories(_outputRoot.Text)
+                .Where(x => File.Exists(Path.Combine(x, "index.html")))
+                .OrderByDescending(x => Path.GetFileName(x), StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppendLine($"WARNING: Could not inspect report folders: {ex.Message}");
+            return null;
+        }
+    }
 
     private void AppendLine(string text)
     {
