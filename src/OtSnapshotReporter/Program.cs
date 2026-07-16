@@ -130,7 +130,10 @@ try
     expectedTasks = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_tasks.json"), new ExpectedTasksConfig(), "tasks");
     expectedSoftware = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_software.json"), new ExpectedSoftwareConfig(), "software");
     expectedDrivers = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_drivers.json"), new ExpectedDriversConfig(), "drivers");
-    maintenanceWindows = LoadOptionalConfig(Path.Combine(options.ConfigPath, "maintenance_windows.json"), new MaintenanceWindowsConfig(), "windows");
+    var maintenanceWindowsPath = Path.Combine(options.ConfigPath, "maintenance_windows.json");
+    maintenanceWindows = File.Exists(maintenanceWindowsPath)
+        ? Loading.LoadMaintenanceWindowsConfig(maintenanceWindowsPath, json)
+        : new MaintenanceWindowsConfig();
 }
 catch (InvalidDataException ex)
 {

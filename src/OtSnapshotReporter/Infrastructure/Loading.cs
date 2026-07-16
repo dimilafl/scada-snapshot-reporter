@@ -73,6 +73,31 @@ public static class Loading
         }
     }
 
+    public static MaintenanceWindowsConfig LoadMaintenanceWindowsConfig(string path, JsonSerializerOptions options)
+    {
+        var config = LoadConfig<MaintenanceWindowsConfig>(path, options, "windows");
+        for (var index = 0; index < config.Windows.Count; index++)
+        {
+            var window = config.Windows[index];
+            if (string.IsNullOrWhiteSpace(window.Name))
+            {
+                throw new InvalidDataException($"Maintenance window {index + 1} in {path} must have a name.");
+            }
+
+            if (!Helpers.TryParseTimestamp(window.Start, out var start) || !Helpers.TryParseTimestamp(window.End, out var end))
+            {
+                throw new InvalidDataException($"Maintenance window '{window.Name}' in {path} has invalid start or end timestamp.");
+            }
+
+            if (end < start)
+            {
+                throw new InvalidDataException($"Maintenance window '{window.Name}' in {path} ends before it starts.");
+            }
+        }
+
+        return config;
+    }
+
     public static List<T> LoadRecords<T>(string path, JsonSerializerOptions options, Func<T, bool> isValid, string recordType) where T : class
     {
         if (!File.Exists(path))

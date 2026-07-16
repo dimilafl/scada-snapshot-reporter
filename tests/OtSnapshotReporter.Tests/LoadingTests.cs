@@ -52,6 +52,24 @@ public sealed class LoadingTests
     }
 
     [Fact]
+    public void LoadMaintenanceWindowsConfig_RejectsInvalidIntervals()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "ot-maintenance-" + Guid.NewGuid() + ".json");
+        try
+        {
+            File.WriteAllText(path, "{\"windows\":[{\"name\":\"Patch\",\"start\":\"2026-07-02T00:00:00\",\"end\":\"2026-07-01T00:00:00\"}]}");
+
+            var exception = Assert.Throws<InvalidDataException>(() => Loading.LoadMaintenanceWindowsConfig(path, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }));
+
+            Assert.Contains("ends before it starts", exception.Message);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void LoadJson_FileNotFound_ReturnsNull()
     {
         var result = Loading.LoadJson<ServiceRecord>(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"), new JsonSerializerOptions());
