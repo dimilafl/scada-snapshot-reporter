@@ -29,7 +29,11 @@ $serversConfig = Read-JsonFile (Join-Path $ConfigPath 'servers.json')
 $thresholds = Read-JsonFile (Join-Path $ConfigPath 'thresholds.json')
 $serverNames = @()
 if ($serversConfig -and $serversConfig.servers) {
-    $serverNames = @($serversConfig.servers | ForEach-Object { $_.name } | Where-Object { $_ })
+    $serverNames = @($serversConfig.servers | ForEach-Object { ([string]$_.name).Trim() } | Where-Object { $_ } | Select-Object -Unique)
+}
+$serverNameSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($serverName in $serverNames) {
+    [void]$serverNameSet.Add($serverName)
 }
 
 if ($serverNames.Count -eq 0) {
@@ -40,6 +44,9 @@ if ($thresholds) {
     if ($thresholds.disk_free_percent_critical -lt 0 -or $thresholds.disk_free_percent_warning -lt 0) {
         Add-Error "Disk thresholds must be non-negative."
     }
+    if ($thresholds.disk_free_percent_critical -gt 100 -or $thresholds.disk_free_percent_warning -gt 100) {
+        Add-Error "Disk thresholds must be between 0 and 100."
+    }
     if ($thresholds.disk_free_percent_critical -gt $thresholds.disk_free_percent_warning) {
         Add-Error "Critical disk threshold must be less than or equal to warning threshold."
     }
@@ -48,6 +55,9 @@ if ($thresholds) {
     }
     if ($thresholds.disk_drop_percent_warning -lt 0) {
         Add-Error "disk_drop_percent_warning must be non-negative."
+    }
+    if ($thresholds.disk_drop_percent_warning -gt 100) {
+        Add-Error "disk_drop_percent_warning must be between 0 and 100."
     }
     if ($thresholds.snapshot_retention_days -lt 1) {
         Add-Error "snapshot_retention_days must be at least 1."
@@ -62,8 +72,9 @@ foreach ($fileName in @('expected_services.json', 'expected_tasks.json', 'expect
     foreach ($collection in $collections) {
         if ($doc.PSObject.Properties[$collection]) {
             foreach ($item in @($doc.$collection)) {
-                if ($item.server -and $serverNames.Count -gt 0 -and $serverNames -notcontains $item.server) {
-                    Add-Error "$fileName references server '$($item.server)' that is not present in servers.json."
+                $expectedServer = ([string]$item.server).Trim()
+                if ($expectedServer.Length -gt 0 -and $serverNameSet.Count -gt 0 -and -not $serverNameSet.Contains($expectedServer)) {
+                    Add-Error "$fileName references server '$expectedServer' that is not present in servers.json."
                 }
             }
         }

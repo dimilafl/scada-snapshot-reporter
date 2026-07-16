@@ -278,6 +278,16 @@ Test-Case "Collector helper normalizes configured servers" {
     }
 }
 
+Test-Case "Config validator matches case-insensitive server references" {
+    $validationConfig = Join-Path $OutputRoot 'case-insensitive-validation-config'
+    New-Item -ItemType Directory -Path $validationConfig -Force | Out-Null
+    Copy-Item .\config\* -Destination $validationConfig -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $validationConfig 'servers.json') -Value '{"servers":[{"name":"LOCALHOST","roles":[]}]}' -Encoding UTF8
+
+    & .\tests\Invoke-ConfigValidation.ps1 -ConfigPath $validationConfig | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Config validator rejected a case-only server reference" }
+}
+
 Test-Case "Scheduled wrapper reuses six-digit report folders" {
     $scheduledRoot = Join-Path (Resolve-Path $OutputRoot).Path 'scheduled-wrapper'
     $scheduledCollectors = Join-Path $scheduledRoot 'collectors'
