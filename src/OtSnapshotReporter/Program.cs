@@ -130,6 +130,16 @@ catch (InvalidDataException ex)
     return 1;
 }
 
+try
+{
+    Directory.CreateDirectory(options.OutputPath);
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+{
+    Console.Error.WriteLine($"Error: Cannot prepare output path: {options.OutputPath}. {ex.Message}");
+    return 1;
+}
+
 var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
 var reportRoot = Path.Combine(options.OutputPath, runStamp);
 var rawOutput = Path.Combine(reportRoot, "raw");

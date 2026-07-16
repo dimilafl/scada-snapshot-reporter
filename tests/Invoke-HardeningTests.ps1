@@ -475,6 +475,24 @@ Test-Case "Engine rejects a missing config path" {
     if (($output -join "`n") -notmatch 'Config path does not exist') { throw "Expected missing config error" }
 }
 
+Test-Case "Engine rejects an unusable output path" {
+    $blockedOutput = Join-Path $OutputRoot 'output-file'
+    Set-Content -LiteralPath $blockedOutput -Value 'not a directory' -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config .\config --output $blockedOutput 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected unusable output path to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Cannot prepare output path') { throw "Expected unusable output path error" }
+}
+
 Test-Case "Engine rejects a missing previous snapshot path" {
     $missingPrevious = Join-Path $OutputRoot 'missing-previous-path'
     $missingReport = Join-Path $OutputRoot 'missing-previous-report'
