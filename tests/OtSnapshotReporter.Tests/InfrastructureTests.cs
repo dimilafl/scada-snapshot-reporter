@@ -6,6 +6,7 @@ public sealed class InfrastructureTests
 {
     [Fact] public void Key_TwoArguments_ReturnsJoined() => Assert.Equal("a|b", Helpers.Key("a", "b"));
     [Fact] public void Key_ThreeArguments_ReturnsJoined() => Assert.Equal("a|b|c", Helpers.Key("a", "b", "c"));
+    [Fact] public void Key_TrimsWhitespaceAndNormalizesNulls() => Assert.Equal("a||c", Helpers.Key(" a ", null, " c "));
     [Fact] public void EqualsText_NullVsNull_ReturnsTrue() => Assert.True(Helpers.EqualsText(null, null));
     [Fact] public void EqualsText_NullVsEmpty_ReturnsTrue() => Assert.True(Helpers.EqualsText(null, ""));
     [Fact] public void EqualsText_SameString_ReturnsTrue() => Assert.True(Helpers.EqualsText("ABC", "abc"));

@@ -195,16 +195,16 @@ public sealed class LoadingTests
     }
 
     [Fact]
-    public void LoadPreviousSnapshot_LoadsPhase3Modules()
+    public void LoadPreviousSnapshot_LoadsAndFiltersPhase3Modules()
     {
         var root = Path.Combine(Path.GetTempPath(), "ot-previous-phase3-" + Guid.NewGuid());
         try
         {
             Directory.CreateDirectory(root);
-            File.WriteAllText(Path.Combine(root, "odbc_dsn_tests.json"), "[{\"server\":\"SRV01\",\"dsnName\":\"Demo\",\"driverName\":\"Driver\",\"type\":\"System\",\"architecture\":\"64-bit\",\"connectionPassed\":true}]");
-            File.WriteAllText(Path.Combine(root, "certificates.json"), "[{\"server\":\"SRV01\",\"subject\":\"CN=Demo\",\"issuer\":\"CA\",\"thumbprint\":\"abc\",\"notBefore\":\"2026\",\"notAfter\":\"2027\",\"daysUntilExpiry\":100,\"store\":\"My\"}]");
-            File.WriteAllText(Path.Combine(root, "sql_agent_jobs.json"), "[{\"server\":\"SRV01\",\"instance\":\".\",\"jobName\":\"Nightly\",\"enabled\":true,\"lastRunStatus\":1}]");
-            File.WriteAllText(Path.Combine(root, "ssrs_subscriptions.json"), "[{\"server\":\"SRV01\",\"instance\":\".\",\"reportPath\":\"/Reports/Daily\",\"subscriptionDescription\":\"Daily\",\"owner\":\"operator\",\"ownerExists\":true,\"lastStatus\":\"Done\",\"enabled\":true}]");
+            File.WriteAllText(Path.Combine(root, "odbc_dsn_tests.json"), "[{\"server\":\"SRV01\",\"dsnName\":\"Demo\",\"driverName\":\"Driver\",\"type\":\"System\",\"architecture\":\"64-bit\",\"connectionPassed\":true},{\"server\":\"SRV01\",\"dsnName\":\"Invalid\",\"driverName\":\"\",\"type\":\"System\",\"architecture\":\"64-bit\",\"connectionPassed\":false}]");
+            File.WriteAllText(Path.Combine(root, "certificates.json"), "[{\"server\":\"SRV01\",\"subject\":\"CN=Demo\",\"issuer\":\"CA\",\"thumbprint\":\"abc\",\"notBefore\":\"2026\",\"notAfter\":\"2027\",\"daysUntilExpiry\":100,\"store\":\"My\"},{\"server\":\"SRV01\",\"subject\":\"CN=Invalid\",\"issuer\":\"CA\",\"thumbprint\":\"\",\"notBefore\":\"2026\",\"notAfter\":\"2027\",\"daysUntilExpiry\":100,\"store\":\"My\"}]");
+            File.WriteAllText(Path.Combine(root, "sql_agent_jobs.json"), "[{\"server\":\"SRV01\",\"instance\":\".\",\"jobName\":\"Nightly\",\"enabled\":true,\"lastRunStatus\":1},{\"server\":\"SRV01\",\"instance\":\"\",\"jobName\":\"Invalid\",\"enabled\":true,\"lastRunStatus\":1}]");
+            File.WriteAllText(Path.Combine(root, "ssrs_subscriptions.json"), "[{\"server\":\"SRV01\",\"instance\":\".\",\"reportPath\":\"/Reports/Daily\",\"subscriptionDescription\":\"Daily\",\"owner\":\"operator\",\"ownerExists\":true,\"lastStatus\":\"Done\",\"enabled\":true},{\"server\":\"SRV01\",\"instance\":\".\",\"reportPath\":\"/Reports/Invalid\",\"subscriptionDescription\":\"\",\"owner\":\"operator\",\"ownerExists\":true,\"lastStatus\":\"Done\",\"enabled\":true}]");
 
             var previous = Loading.LoadPreviousSnapshot(root, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 

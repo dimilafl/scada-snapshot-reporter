@@ -229,10 +229,10 @@ public static class Loading
                 LoadRecords<FileShareRecord>(Path.Combine(raw, "file_shares.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "previous file-share"),
                 LoadRecords<BackupFreshnessRecord>(Path.Combine(raw, "backup_freshness.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Path), "previous backup"))
             {
-                OdbcDsns = LoadRecords<OdbcDsnRecord>(Path.Combine(raw, "odbc_dsn_tests.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.DsnName), "previous ODBC DSN"),
-                Certificates = LoadRecords<CertificateRecord>(Path.Combine(raw, "certificates.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Subject), "previous certificate"),
-                SqlAgentJobs = LoadRecords<SqlAgentJobRecord>(Path.Combine(raw, "sql_agent_jobs.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.JobName), "previous SQL Agent job"),
-                SsrsSubscriptions = LoadRecords<SsrsSubscriptionRecord>(Path.Combine(raw, "ssrs_subscriptions.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.ReportPath), "previous SSRS subscription")
+                OdbcDsns = LoadRecords<OdbcDsnRecord>(Path.Combine(raw, "odbc_dsn_tests.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.DsnName) && !string.IsNullOrWhiteSpace(x.DriverName) && !string.IsNullOrWhiteSpace(x.Type) && !string.IsNullOrWhiteSpace(x.Architecture), "previous ODBC DSN"),
+                Certificates = LoadRecords<CertificateRecord>(Path.Combine(raw, "certificates.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Subject) && !string.IsNullOrWhiteSpace(x.Thumbprint) && !string.IsNullOrWhiteSpace(x.NotAfter) && !string.IsNullOrWhiteSpace(x.Store), "previous certificate"),
+                SqlAgentJobs = LoadRecords<SqlAgentJobRecord>(Path.Combine(raw, "sql_agent_jobs.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Instance) && !string.IsNullOrWhiteSpace(x.JobName), "previous SQL Agent job"),
+                SsrsSubscriptions = LoadRecords<SsrsSubscriptionRecord>(Path.Combine(raw, "ssrs_subscriptions.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Instance) && !string.IsNullOrWhiteSpace(x.ReportPath) && !string.IsNullOrWhiteSpace(x.SubscriptionDescription), "previous SSRS subscription")
             };
         }
         finally

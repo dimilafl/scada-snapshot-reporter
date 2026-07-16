@@ -140,7 +140,7 @@ public static class DiffEngine
             ]);
 
     public static IEnumerable<Finding> DiffCertificates(IReadOnlyCollection<CertificateRecord> records, IReadOnlyCollection<CertificateRecord> previous) =>
-        Diff(records, previous, x => Helpers.Key(x.Server, x.Thumbprint, x.Subject),
+        Diff(records, previous, x => Helpers.Key(x.Server, x.Thumbprint, x.Subject, x.Store),
             old => Finding.Create("certificates", old.Server, old.Subject, Severity.Medium, "Certificate disappeared since previous snapshot"),
             _ => null,
             [

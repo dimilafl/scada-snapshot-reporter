@@ -29,6 +29,15 @@ public sealed class DiffEngineTests
         Assert.Contains(findings, x => x.Severity == Severity.Medium && x.Message.Contains("Version changed"));
     }
 
+    [Fact]
+    public void Diff_WhitespaceAroundIdentity_DoesNotCreateFalseDrift()
+    {
+        var current = new SoftwareRecord(" SRV01 ", " A ", "1", null, null);
+        var previous = new SoftwareRecord("SRV01", "A", "1", null, null);
+
+        Assert.Empty(DiffEngine.DiffSoftware([current], [previous]));
+    }
+
     [Fact] public void Diff_MultipleChanges_ProducesMultipleFindings()
     {
         var current = new TaskRecord("SRV01", "\\", "A", false, null, null, null, null, "B", "new");
@@ -58,6 +67,17 @@ public sealed class DiffEngineTests
 
         Assert.Equal(Severity.Medium, finding.Severity);
         Assert.Contains("expiration changed", finding.Message);
+    }
+
+    [Fact]
+    public void DiffCertificates_SameCertificateInDifferentStore_IsNotCollapsed()
+    {
+        var current = new CertificateRecord("SRV01", "CN=Demo", "Demo CA", "abc", "2026-01-01", "2027-01-01", 100, "My");
+        var previous = current with { Store = "Root" };
+
+        var finding = Assert.Single(DiffEngine.DiffCertificates([current], [previous]));
+
+        Assert.Contains("disappeared", finding.Message);
     }
 
     [Fact]
