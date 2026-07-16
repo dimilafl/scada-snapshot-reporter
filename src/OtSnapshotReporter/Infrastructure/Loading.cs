@@ -264,10 +264,10 @@ public static class Loading
             return direct;
         }
 
-        string[] candidates;
+        string[] timestampFolders;
         try
         {
-            candidates = Directory.GetDirectories(serverPath, "raw", SearchOption.AllDirectories);
+            timestampFolders = Directory.GetDirectories(serverPath);
         }
         catch (IOException)
         {
@@ -278,17 +278,20 @@ public static class Loading
             return null;
         }
 
-        return candidates
-            .Select(path => new
+        return timestampFolders
+            .Select(folder => new
             {
-                Path = path,
-                Timestamp = TryParseSnapshotFolder(path, out var timestamp) ? timestamp : (DateTime?)null,
-                LastWrite = Directory.GetLastWriteTimeUtc(path)
+                Folder = folder,
+                Raw = Path.Combine(folder, "raw"),
+                Timestamp = TryParseSnapshotFolder(Path.Combine(folder, "raw"), out var timestamp) ? timestamp : (DateTime?)null
             })
+            .Where(candidate => candidate.Timestamp.HasValue &&
+                Directory.Exists(candidate.Raw) &&
+                !File.Exists(Path.Combine(candidate.Folder, "index.html")))
             .OrderByDescending(candidate => candidate.Timestamp.HasValue)
             .ThenByDescending(candidate => candidate.Timestamp ?? DateTime.MinValue)
-            .ThenByDescending(candidate => candidate.LastWrite)
-            .Select(candidate => candidate.Path)
+            .ThenByDescending(candidate => Directory.GetLastWriteTimeUtc(candidate.Raw))
+            .Select(candidate => candidate.Raw)
             .FirstOrDefault();
     }
 

@@ -117,14 +117,18 @@ public sealed class InfrastructureTests
             var oldRaw = Path.Combine(input, "server-a", "2026-01-01_010000", "raw");
             var latestRaw = Path.Combine(input, "server-a", "2026-01-02_010000", "raw");
             var serverBRaw = Path.Combine(input, "server-b", "2026-01-03_010000", "raw");
+            var reportRaw = Path.Combine(input, "Output", "2026-01-04_010000", "raw");
             Directory.CreateDirectory(oldRaw);
             Directory.CreateDirectory(latestRaw);
             Directory.CreateDirectory(serverBRaw);
+            Directory.CreateDirectory(reportRaw);
+            File.WriteAllText(Path.Combine(Path.GetDirectoryName(reportRaw)!, "index.html"), "<html></html>");
 
             const string serviceTemplate = "[{{\"server\":\"{0}\",\"name\":\"{1}\",\"displayName\":\"{1}\",\"status\":\"Running\",\"startupType\":\"Automatic\",\"startName\":\"SYSTEM\"}}]";
             File.WriteAllText(Path.Combine(oldRaw, "services.json"), string.Format(serviceTemplate, "server-a", "Old"));
             File.WriteAllText(Path.Combine(latestRaw, "services.json"), string.Format(serviceTemplate, "server-a", "Latest"));
             File.WriteAllText(Path.Combine(serverBRaw, "services.json"), string.Format(serviceTemplate, "server-b", "Current"));
+            File.WriteAllText(Path.Combine(reportRaw, "services.json"), string.Format(serviceTemplate, "localhost", "Report"));
 
             var merged = Loading.ResolveRawRoot(input, output);
 
@@ -134,6 +138,34 @@ public sealed class InfrastructureTests
                 .OrderBy(name => name)
                 .ToArray();
             Assert.Equal(new[] { "Current", "Latest" }, names);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void ResolveRawRoot_IgnoresNonTimestampNestedRawFolders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-nested-layout-test-" + Guid.NewGuid());
+        var input = Path.Combine(root, "input");
+        var output = Path.Combine(root, "output");
+        try
+        {
+            var unrelatedRaw = Path.Combine(input, "archive", "old-run", "raw");
+            Directory.CreateDirectory(unrelatedRaw);
+            File.WriteAllText(
+                Path.Combine(unrelatedRaw, "services.json"),
+                "[{\"server\":\"archive\",\"name\":\"ShouldNotBeLoaded\"}]");
+
+            var merged = Loading.ResolveRawRoot(input, output);
+
+            Assert.Equal(Path.Combine(input, "raw"), merged);
+            Assert.False(Directory.Exists(Path.Combine(output, "merged_raw")));
         }
         finally
         {
