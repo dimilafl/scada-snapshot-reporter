@@ -112,7 +112,7 @@ public static class DiffEngine
 
     public static IEnumerable<Finding> DiffFileShares(IReadOnlyCollection<FileShareRecord> records, IReadOnlyCollection<FileShareRecord> previous) =>
         Diff(records, previous, x => Helpers.Key(x.Server, x.Path),
-            _ => null!,
+            _ => null,
             _ => null,
             [
                 new((current, old) => old.Reachable && !current.Reachable ? Finding.Create("file_shares", current.Server, current.Name ?? current.Path, Severity.High, "Share was reachable previously, now unreachable") : null),
@@ -121,7 +121,7 @@ public static class DiffEngine
 
     public static IEnumerable<Finding> DiffBackups(IReadOnlyCollection<BackupFreshnessRecord> records, IReadOnlyCollection<BackupFreshnessRecord> previous) =>
         Diff(records, previous, x => Helpers.Key(x.Server, x.Path),
-            _ => null!,
+            _ => null,
             _ => null,
             [
                 new((current, old) => old.Exists && !current.Exists ? Finding.Create("backups", current.Server, current.Name ?? current.Path, Severity.High, "Backup/export path disappeared since previous snapshot") : null),

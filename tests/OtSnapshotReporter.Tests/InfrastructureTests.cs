@@ -13,6 +13,7 @@ public sealed class InfrastructureTests
     [Fact] public void EqualsText_DifferentString_ReturnsFalse() => Assert.False(Helpers.EqualsText("ABC", "def"));
     [Fact] public void ParseSeverity_Critical_ReturnsCritical() => Assert.Equal(Severity.Critical, Helpers.ParseSeverity("Critical", Severity.Info));
     [Fact] public void ParseSeverity_Unknown_ReturnsInfo() => Assert.Equal(Severity.Info, Helpers.ParseSeverity("nope", Severity.Info));
+    [Fact] public void ParseSeverity_UndefinedNumeric_ReturnsFallback() => Assert.Equal(Severity.Info, Helpers.ParseSeverity("99", Severity.Info));
 
     [Fact] public void TryParseTimestamp_Iso8601_IsCultureIndependent()
     {

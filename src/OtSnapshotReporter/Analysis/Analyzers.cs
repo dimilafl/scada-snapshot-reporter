@@ -229,7 +229,7 @@ public static class Analyzers
         {
             if (cert.DaysUntilExpiry < 0)
             {
-                yield return Finding.Create("certificates", cert.Server, cert.Subject, Severity.Critical, $"Certificate expired {Math.Abs(cert.DaysUntilExpiry)} days ago");
+                yield return Finding.Create("certificates", cert.Server, cert.Subject, Severity.Critical, $"Certificate expired {Math.Abs((long)cert.DaysUntilExpiry)} days ago");
             }
             else if (cert.DaysUntilExpiry <= 30)
             {

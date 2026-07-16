@@ -169,4 +169,15 @@ public sealed class AnalyzerTests
     {
         Assert.Contains(Analyzers.AnalyzeCertificates([new("SRV01", "CN=a", "CA", "abc", "2025", "2026", 20, "My")]), x => x.Severity == Severity.High);
     }
+
+    [Fact] public void AnalyzeCertificates_MinimumExpiryValue_DoesNotOverflow()
+    {
+        var exception = Record.Exception(() =>
+        {
+            var finding = Assert.Single(Analyzers.AnalyzeCertificates([new("SRV01", "CN=a", "CA", "abc", "2025", "2026", int.MinValue, "My")]));
+            Assert.Contains("2147483648 days", finding.Message);
+        });
+
+        Assert.Null(exception);
+    }
 }
