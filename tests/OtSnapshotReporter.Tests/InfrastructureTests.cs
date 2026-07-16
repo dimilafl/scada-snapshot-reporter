@@ -66,6 +66,57 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public void CreateAvailableReportRoot_ReservesFolderAndSkipsExistingFoldersAndFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-report-reservation-test-" + Guid.NewGuid());
+        var timestamp = new DateTime(2026, 7, 16, 12, 34, 56);
+        var first = Path.Combine(root, "2026-07-16_123456");
+        var second = Path.Combine(root, "2026-07-16_123457");
+        try
+        {
+            Directory.CreateDirectory(first);
+            Directory.CreateDirectory(root);
+            File.WriteAllText(second, "reserved");
+
+            var result = Writing.CreateAvailableReportRoot(root, timestamp);
+
+            Assert.Equal(Path.Combine(root, "2026-07-16_123458"), result);
+            Assert.True(Directory.Exists(result));
+            Assert.Empty(Directory.GetFileSystemEntries(result));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CreateAvailableReportRoot_ConcurrentCallsReturnDistinctFolders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-report-concurrency-test-" + Guid.NewGuid());
+        try
+        {
+            Directory.CreateDirectory(root);
+            var timestamp = new DateTime(2026, 7, 16, 12, 34, 56);
+            var results = await Task.WhenAll(Enumerable.Range(0, 8)
+                .Select(_ => Task.Run(() => Writing.CreateAvailableReportRoot(root, timestamp))));
+
+            Assert.Equal(results.Length, results.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+            Assert.All(results, result => Assert.True(Directory.Exists(result)));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void WriteTextAtomically_ReplacesContentAndRemovesTemporaryFile()
     {
         var root = Path.Combine(Path.GetTempPath(), "ot-atomic-write-test-" + Guid.NewGuid());

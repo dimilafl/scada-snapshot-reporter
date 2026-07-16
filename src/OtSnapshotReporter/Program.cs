@@ -140,10 +140,9 @@ catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or A
     return 1;
 }
 
-var reportRoot = Writing.GetAvailableReportRoot(options.OutputPath, DateTime.Now);
+var reportRoot = Writing.CreateAvailableReportRoot(options.OutputPath, DateTime.Now);
 var rawOutput = Path.Combine(reportRoot, "raw");
 
-Directory.CreateDirectory(reportRoot);
 Directory.CreateDirectory(rawOutput);
 
 var rawRoot = Loading.ResolveRawRoot(options.InputPath, options.OutputPath);

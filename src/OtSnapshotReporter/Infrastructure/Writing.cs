@@ -65,6 +65,38 @@ public static class Writing
         }
     }
 
+    public static string CreateAvailableReportRoot(string outputPath, DateTime timestamp)
+    {
+        var candidateTime = timestamp;
+        while (true)
+        {
+            var candidate = Path.Combine(outputPath, candidateTime.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture));
+            if (Directory.Exists(candidate) || File.Exists(candidate))
+            {
+                candidateTime = candidateTime.AddSeconds(1);
+                continue;
+            }
+
+            var reservation = Path.Combine(outputPath, $".report-reservation-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(reservation);
+            try
+            {
+                Directory.Move(reservation, candidate);
+                return candidate;
+            }
+            catch (IOException) when (Directory.Exists(candidate) || File.Exists(candidate))
+            {
+                TryDeleteReservation(reservation);
+                candidateTime = candidateTime.AddSeconds(1);
+            }
+            catch
+            {
+                TryDeleteReservation(reservation);
+                throw;
+            }
+        }
+    }
+
     public static void CleanupOldSnapshots(string outputPath, int retentionDays)
     {
         if (!Directory.Exists(outputPath) || retentionDays <= 0)
@@ -133,6 +165,18 @@ public static class Writing
         {
             Console.Error.WriteLine($"WARNING: Could not clean up {description} '{name}': {ex.Message}");
             return false;
+        }
+    }
+
+    private static void TryDeleteReservation(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+        catch
+        {
+            // Preserve the original allocation failure; a stale reservation is harmless.
         }
     }
 
