@@ -10,6 +10,7 @@ public sealed class CsvReportTests
     [Fact] public void Escape_ContainsCarriageReturn_WrapsInQuotes() => Assert.Equal("\"a\rb\"", CsvReport.Escape("a\rb"));
     [Fact] public void Escape_LeadingWhitespace_WrapsInQuotes() => Assert.Equal("\" abc\"", CsvReport.Escape(" abc"));
     [Fact] public void Escape_TrailingWhitespace_WrapsInQuotes() => Assert.Equal("\"abc \"", CsvReport.Escape("abc "));
+    [Fact] public void Escape_FormulaPrefix_IsNeutralized() => Assert.Equal("'=SUM(A1:A2)", CsvReport.Escape("=SUM(A1:A2)"));
 
     [Fact] public void WriteFindings_ProducesValidCsv()
     {

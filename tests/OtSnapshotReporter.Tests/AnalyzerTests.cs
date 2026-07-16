@@ -52,6 +52,21 @@ public sealed class AnalyzerTests
         Assert.Empty(Analyzers.AnalyzeServices([new("SRV01", "Foo", "Foo", "Running", "Automatic", "SYSTEM")], new ExpectedServicesConfig()));
     }
 
+    [Fact] public void AnalyzeServices_CaseOnlyDuplicateIdentity_DoesNotThrow()
+    {
+        var records = new[]
+        {
+            new ServiceRecord("SRV01", "EventLog", "Event Log", "Running", "Automatic", "SYSTEM"),
+            new ServiceRecord("srv01", "eventlog", "Event Log", "Running", "Automatic", "SYSTEM")
+        };
+
+        var exception = Record.Exception(() => Analyzers.AnalyzeServices(
+            records,
+            new ExpectedServicesConfig([new("srv01", "EVENTLOG", "Running", "Automatic", "Critical")])).ToList());
+
+        Assert.Null(exception);
+    }
+
     [Fact] public void AnalyzeMissingServers_MissingConfiguredServer_ProducesCritical()
     {
         var configured = new ServersConfig([new("SRV01", []), new("SRV02", [])]);

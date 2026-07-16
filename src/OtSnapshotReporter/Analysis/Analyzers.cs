@@ -7,7 +7,7 @@ public static class Analyzers
 {
     public static IEnumerable<Finding> AnalyzeServices(IEnumerable<ServiceRecord> records, ExpectedServicesConfig config)
     {
-        var actual = records.GroupBy(x => Helpers.Key(x.Server, x.Name)).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var actual = records.GroupBy(x => Helpers.Key(x.Server, x.Name), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var expected in config.Services)
         {
             if (!actual.TryGetValue(Helpers.Key(expected.Server, expected.Name), out var service))
@@ -66,7 +66,7 @@ public static class Analyzers
             }
         }
 
-        var actual = taskRecords.GroupBy(x => Helpers.Key(x.Server, x.TaskPath + x.TaskName)).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var actual = taskRecords.GroupBy(x => Helpers.Key(x.Server, x.TaskPath + x.TaskName), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var expected in config.Tasks)
         {
             if (!actual.TryGetValue(Helpers.Key(expected.Server, expected.TaskPath + expected.TaskName), out var task))
@@ -89,7 +89,7 @@ public static class Analyzers
             yield break;
         }
 
-        var previousByServer = previous.Uptimes.GroupBy(x => x.Server).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var previousByServer = previous.Uptimes.GroupBy(x => x.Server, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var record in records)
         {
             if (previousByServer.TryGetValue(record.Server, out var old) &&
@@ -104,7 +104,7 @@ public static class Analyzers
 
     public static IEnumerable<Finding> AnalyzeSoftware(IEnumerable<SoftwareRecord> records, ExpectedSoftwareConfig config)
     {
-        var softwareByKey = records.GroupBy(x => Helpers.Key(x.Server, x.Name)).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var softwareByKey = records.GroupBy(x => Helpers.Key(x.Server, x.Name), StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var expected in config.Software)
         {
             if (!softwareByKey.TryGetValue(Helpers.Key(expected.Server, expected.Name), out var match))
@@ -120,7 +120,7 @@ public static class Analyzers
 
     public static IEnumerable<Finding> AnalyzeDrivers(IEnumerable<DriverRecord> records, ExpectedDriversConfig config)
     {
-        var driversByKey = records.GroupBy(x => Helpers.Key(x.Server, x.Type, x.Name, x.Architecture)).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var driversByKey = records.GroupBy(x => Helpers.Key(x.Server, x.Type, x.Name, x.Architecture), StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var expected in config.Drivers)
         {
             if (!driversByKey.TryGetValue(Helpers.Key(expected.Server, expected.Type, expected.Name, expected.Architecture), out var match))

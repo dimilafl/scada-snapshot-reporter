@@ -22,6 +22,11 @@ public static class CsvReport
     public static string Escape(string? value)
     {
         value ??= "";
+        if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@')
+        {
+            value = "'" + value;
+        }
+
         if (value.Contains('"') || value.Contains(',') || value.Contains('\n') || value.Contains('\r') || value.StartsWith(' ') || value.EndsWith(' '))
         {
             return '"' + value.Replace("\"", "\"\"") + '"';

@@ -17,6 +17,7 @@ As of 2026-07-16, the public tree has also addressed the following follow-on ris
 - GUI defaults discover the repository layout from `config/servers.json` and the collector runner, then search common engine build and publish locations. Existing saved settings and manual path controls remain authoritative.
 - Scheduled runs resolve relative paths from `RepositoryRoot`, reject a missing report executable before collection, and reserve a unique `collection_` folder even when two runs begin in the same second. Per-server collection folders use the same collision-resistant behavior.
 - The GUI requires both `servers.json` and a report `raw` folder when selecting operational prerequisites and the previous report used for drift comparison. Per-server collection rejects non-positive timeout and retry limits before starting jobs.
+- Analyzer and diff identity maps group with the same case-insensitive comparer used for lookup, so case-only duplicate rows do not crash report generation. CSV exports neutralize formula-leading values before spreadsheet users open them.
 
 The remaining design debt below is intentionally scoped: module registration and versioned JSON schemas would reduce future maintenance cost, but the current explicit orchestration remains behaviorally covered by the hardening suite.
 

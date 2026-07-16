@@ -46,6 +46,24 @@ public sealed class DiffEngineTests
     }
 
     [Fact]
+    public void Diff_CaseOnlyDuplicateIdentity_UsesOneRecord()
+    {
+        var current = new[]
+        {
+            new ServiceRecord("SRV01", "Demo", "Demo", "Running", "Automatic", "SYSTEM"),
+            new ServiceRecord("srv01", "demo", "Demo", "Running", "Automatic", "SYSTEM")
+        };
+        var previous = new[]
+        {
+            new ServiceRecord("srv01", "DEMO", "Demo", "Running", "Automatic", "SYSTEM")
+        };
+
+        var exception = Record.Exception(() => DiffEngine.DiffServices(current, previous).ToList());
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
     public void DiffOdbcDsns_ConnectionFailure_ProducesHighFinding()
     {
         var current = new OdbcDsnRecord("SRV01", "Historian", "New Driver", "System", "64-bit", null, null, false);

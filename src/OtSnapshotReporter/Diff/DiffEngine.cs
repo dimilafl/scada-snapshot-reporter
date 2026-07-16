@@ -20,8 +20,8 @@ public static class DiffEngine
             yield break;
         }
 
-        var currentByKey = current.GroupBy(keySelector).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
-        var previousByKey = previous.GroupBy(keySelector).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var currentByKey = current.GroupBy(keySelector, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var previousByKey = previous.GroupBy(keySelector, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var (key, old) in previousByKey)
         {
