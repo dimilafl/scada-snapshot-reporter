@@ -153,7 +153,7 @@ internal sealed class MainForm : Form
         _configPath.Text = _settings.ConfigPath;
         _outputRoot.Text = _settings.OutputRoot;
         _engineExe.Text = _settings.EngineExe;
-        _viewButton.Enabled = File.Exists(Path.Combine(_settings.LastReportPath, "index.html"));
+        _viewButton.Enabled = File.Exists(Path.Combine(_settings.LastReportPath, "index.html")) && Directory.Exists(Path.Combine(_settings.LastReportPath, "raw"));
     }
 
     private void SaveSettingsFromUi()
@@ -172,13 +172,24 @@ internal sealed class MainForm : Form
         try
         {
             var json = JsonNode.Parse(File.ReadAllText(path));
-            foreach (var server in json?["servers"]?.AsArray() ?? [])
+            if (json is not JsonObject root || root["servers"] is not JsonArray serverEntries)
             {
-                var name = server?["name"]?.GetValue<string>();
-                if (!string.IsNullOrWhiteSpace(name)) _servers.Items.Add(name);
+                throw new InvalidDataException("servers.json must contain a 'servers' array of objects with names.");
+            }
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var server in serverEntries)
+            {
+                var name = server?["name"]?.GetValue<string>()?.Trim();
+                if (!string.IsNullOrWhiteSpace(name) && seen.Add(name)) _servers.Items.Add(name);
+            }
+
+            if (_servers.Items.Count == 0)
+            {
+                throw new InvalidDataException("servers.json must contain at least one non-empty server name.");
             }
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or IOException)
+        catch (Exception ex) when (ex is JsonException or InvalidDataException or InvalidOperationException or IOException)
         {
             _serversFileInvalid = true;
             AppendLine($"WARNING: Could not load servers.json: {ex.Message}");
@@ -192,9 +203,28 @@ internal sealed class MainForm : Form
             throw new InvalidOperationException("servers.json is invalid; add or remove a server to replace it deliberately.");
         }
 
+        if (_servers.Items.Count == 0)
+        {
+            throw new InvalidOperationException("servers.json must contain at least one non-empty server name.");
+        }
+
         Directory.CreateDirectory(_configPath.Text);
         var servers = new JsonArray();
-        foreach (var item in _servers.Items) servers.Add(new JsonObject { ["name"] = item.ToString(), ["roles"] = new JsonArray() });
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in _servers.Items)
+        {
+            var name = item?.ToString()?.Trim();
+            if (!string.IsNullOrWhiteSpace(name) && seen.Add(name))
+            {
+                servers.Add(new JsonObject { ["name"] = name, ["roles"] = new JsonArray() });
+            }
+        }
+
+        if (servers.Count == 0)
+        {
+            throw new InvalidOperationException("servers.json must contain at least one non-empty server name.");
+        }
+
         var path = ServersPath();
         var json = new JsonObject { ["servers"] = servers }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         JsonNode.Parse(json);
@@ -204,7 +234,7 @@ internal sealed class MainForm : Form
     private void AddServer()
     {
         var name = _serverInput.Text.Trim();
-        if (name.Length == 0 || _servers.Items.Contains(name)) return;
+        if (name.Length == 0 || HasServer(name)) return;
 
         var previousInvalidState = _serversFileInvalid;
         var insertedIndex = _servers.Items.Count;
@@ -398,6 +428,7 @@ internal sealed class MainForm : Form
         if (!File.Exists(CollectorScript())) missing.Add("collector script");
         if (!File.Exists(_engineExe.Text)) missing.Add("engine executable");
         if (!Directory.Exists(_configPath.Text)) missing.Add("config path");
+        else if (_serversFileInvalid) missing.Add("valid servers config");
         else if (!File.Exists(ServersPath())) missing.Add("servers config");
         SetStatus(missing.Count == 0 ? "Ready" : "Missing " + string.Join(", ", missing));
     }
@@ -490,6 +521,9 @@ internal sealed class MainForm : Form
             return null;
         }
     }
+
+    private bool HasServer(string name) =>
+        _servers.Items.Cast<object>().Any(item => string.Equals(item?.ToString(), name, StringComparison.OrdinalIgnoreCase));
 
     private void AppendLine(string text)
     {

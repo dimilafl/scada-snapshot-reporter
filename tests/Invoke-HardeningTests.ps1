@@ -89,6 +89,9 @@ Test-Case "GUI passes the latest report to drift comparison" {
     Assert-Contains $mainForm 'yield return "--previous";'
     Assert-Contains $mainForm 'Directory.Exists(Path.Combine(x, "raw"))'
     Assert-Contains $mainForm 'missing.Add("servers config")'
+    Assert-Contains $mainForm 'missing.Add("valid servers config")'
+    Assert-Contains $mainForm 'servers.json must contain at least one non-empty server name.'
+    Assert-Contains $mainForm 'HasServer(name)'
 }
 
 Test-Case "Scheduled wrapper reserves unique collection paths" {
