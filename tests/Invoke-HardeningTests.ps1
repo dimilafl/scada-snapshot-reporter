@@ -84,6 +84,7 @@ Test-Case "Unit tests pass" {
 
 Test-Case "GUI passes the latest report to drift comparison" {
     $mainForm = Get-Content .\src\OtSnapshotGui\MainForm.cs -Raw
+    $settings = Get-Content .\src\OtSnapshotGui\Settings.cs -Raw
     Assert-Contains $mainForm 'var previousReport = LatestReportFolder();'
     Assert-Contains $mainForm 'EngineArgs(inputPath, previousReport)'
     Assert-Contains $mainForm 'yield return "--previous";'
@@ -92,6 +93,8 @@ Test-Case "GUI passes the latest report to drift comparison" {
     Assert-Contains $mainForm 'missing.Add("valid servers config")'
     Assert-Contains $mainForm 'servers.json must contain at least one non-empty server name.'
     Assert-Contains $mainForm 'HasServer(name)'
+    Assert-Contains $settings 'if (string.IsNullOrWhiteSpace(settings.ConfigPath)) settings.ConfigPath = GuiPathDefaults.ConfigPath;'
+    Assert-Contains $settings 'if (string.IsNullOrWhiteSpace(settings.EngineExe)) settings.EngineExe = GuiPathDefaults.EnginePath;'
 }
 
 Test-Case "Scheduled wrapper reserves unique collection paths" {

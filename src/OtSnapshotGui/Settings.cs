@@ -22,7 +22,13 @@ internal sealed class GuiSettings
 
         try
         {
-            return JsonSerializer.Deserialize<GuiSettings>(File.ReadAllText(SettingsPath), JsonOptions()) ?? new GuiSettings();
+            var settings = JsonSerializer.Deserialize<GuiSettings>(File.ReadAllText(SettingsPath), JsonOptions()) ?? new GuiSettings();
+            if (string.IsNullOrWhiteSpace(settings.ConfigPath)) settings.ConfigPath = GuiPathDefaults.ConfigPath;
+            if (string.IsNullOrWhiteSpace(settings.OutputRoot)) settings.OutputRoot = GuiPathDefaults.OutputRoot;
+            if (string.IsNullOrWhiteSpace(settings.CollectorScript)) settings.CollectorScript = GuiPathDefaults.CollectorScript;
+            if (string.IsNullOrWhiteSpace(settings.EngineExe)) settings.EngineExe = GuiPathDefaults.EnginePath;
+            settings.LastReportPath ??= "";
+            return settings;
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
