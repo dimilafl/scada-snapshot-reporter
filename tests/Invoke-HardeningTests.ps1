@@ -681,11 +681,11 @@ Test-Case "Engine rejects invalid threshold values" {
     New-Item -ItemType Directory -Path $configDir -Force | Out-Null
     Copy-Item .\config\* -Destination $configDir -Recurse -Force
     @{
-        disk_free_percent_warning = 10
-        disk_free_percent_critical = 20
+        disk_free_percent_warning = 101
+        disk_free_percent_critical = 100
         task_not_run_hours_warning = -1
         reboot_detection_enabled = $true
-        disk_drop_percent_warning = -1
+        disk_drop_percent_warning = 101
         snapshot_retention_days = 0
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $configDir 'thresholds.json') -Encoding UTF8
 
@@ -701,6 +701,7 @@ Test-Case "Engine rejects invalid threshold values" {
 
     if ($exitCode -ne 1) { throw "Expected invalid threshold values to exit 1, got $exitCode" }
     if (($output -join "`n") -notmatch 'Invalid threshold configuration') { throw "Expected invalid threshold configuration error" }
+    if (($output -join "`n") -notmatch 'between 0 and 100') { throw "Expected threshold range validation error" }
     if (Test-Path $reportDir) { throw "Invalid threshold values created report output" }
 }
 

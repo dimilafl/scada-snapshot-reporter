@@ -77,6 +77,10 @@ if (thresholds.DiskFreePercentCritical < 0 || thresholds.DiskFreePercentWarning 
 {
     thresholdErrors.Add("disk free thresholds must be non-negative");
 }
+if (thresholds.DiskFreePercentCritical > 100 || thresholds.DiskFreePercentWarning > 100)
+{
+    thresholdErrors.Add("disk free thresholds must be between 0 and 100");
+}
 if (thresholds.DiskFreePercentCritical > thresholds.DiskFreePercentWarning)
 {
     thresholdErrors.Add("critical disk threshold must be less than or equal to warning threshold");
@@ -88,6 +92,10 @@ if (thresholds.TaskNotRunHoursWarning < 0)
 if (thresholds.DiskDropPercentWarning < 0)
 {
     thresholdErrors.Add("disk_drop_percent_warning must be non-negative");
+}
+if (thresholds.DiskDropPercentWarning > 100)
+{
+    thresholdErrors.Add("disk_drop_percent_warning must be between 0 and 100");
 }
 if (thresholds.SnapshotRetentionDays < 1)
 {
