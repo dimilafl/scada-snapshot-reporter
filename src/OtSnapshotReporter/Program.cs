@@ -50,6 +50,16 @@ var json = new JsonSerializerOptions
     Converters = { new JsonStringEnumConverter() }
 };
 
+T LoadOptionalConfig<T>(string path, T fallback) where T : class
+{
+    if (!File.Exists(path))
+    {
+        return fallback;
+    }
+
+    return Loading.LoadJson<T>(path, json) ?? throw new InvalidDataException($"Config file is invalid: {path}");
+}
+
 var thresholdsPath = Path.Combine(options.ConfigPath, "thresholds.json");
 var thresholds = new Thresholds();
 if (File.Exists(thresholdsPath))
@@ -74,6 +84,25 @@ if (File.Exists(serversPath))
     }
 }
 
+ExpectedServicesConfig expectedServices;
+ExpectedTasksConfig expectedTasks;
+ExpectedSoftwareConfig expectedSoftware;
+ExpectedDriversConfig expectedDrivers;
+MaintenanceWindowsConfig maintenanceWindows;
+try
+{
+    expectedServices = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_services.json"), new ExpectedServicesConfig());
+    expectedTasks = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_tasks.json"), new ExpectedTasksConfig());
+    expectedSoftware = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_software.json"), new ExpectedSoftwareConfig());
+    expectedDrivers = LoadOptionalConfig(Path.Combine(options.ConfigPath, "expected_drivers.json"), new ExpectedDriversConfig());
+    maintenanceWindows = LoadOptionalConfig(Path.Combine(options.ConfigPath, "maintenance_windows.json"), new MaintenanceWindowsConfig());
+}
+catch (InvalidDataException ex)
+{
+    Console.Error.WriteLine($"Error: {ex.Message}");
+    return 1;
+}
+
 var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
 var reportRoot = Path.Combine(options.OutputPath, runStamp);
 var rawOutput = Path.Combine(reportRoot, "raw");
@@ -83,12 +112,6 @@ Directory.CreateDirectory(rawOutput);
 
 var rawRoot = Loading.ResolveRawRoot(options.InputPath, options.OutputPath);
 Loading.CopyRawInputs(rawRoot, rawOutput);
-
-var expectedServices = Loading.LoadJson<ExpectedServicesConfig>(Path.Combine(options.ConfigPath, "expected_services.json"), json) ?? new ExpectedServicesConfig();
-var expectedTasks = Loading.LoadJson<ExpectedTasksConfig>(Path.Combine(options.ConfigPath, "expected_tasks.json"), json) ?? new ExpectedTasksConfig();
-var expectedSoftware = Loading.LoadJson<ExpectedSoftwareConfig>(Path.Combine(options.ConfigPath, "expected_software.json"), json) ?? new ExpectedSoftwareConfig();
-var expectedDrivers = Loading.LoadJson<ExpectedDriversConfig>(Path.Combine(options.ConfigPath, "expected_drivers.json"), json) ?? new ExpectedDriversConfig();
-var maintenanceWindows = Loading.LoadJson<MaintenanceWindowsConfig>(Path.Combine(options.ConfigPath, "maintenance_windows.json"), json) ?? new MaintenanceWindowsConfig();
 
 var services = Loading.LoadRecords<ServiceRecord>(Path.Combine(rawRoot, "services.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name), "service");
 var disks = Loading.LoadRecords<DiskRecord>(Path.Combine(rawRoot, "disk_space.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Drive), "disk");

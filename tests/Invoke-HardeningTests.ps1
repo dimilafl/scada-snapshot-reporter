@@ -538,6 +538,28 @@ Test-Case "Engine rejects a corrupt servers config" {
     if (Test-Path $reportDir) { throw "Corrupt servers config created report output" }
 }
 
+Test-Case "Engine rejects a corrupt expected config" {
+    $configDir = Join-Path $OutputRoot 'corrupt-expected-config'
+    $reportDir = Join-Path $OutputRoot 'corrupt-expected-report'
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    Copy-Item .\config\* -Destination $configDir -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $configDir 'expected_services.json') -Value 'not json' -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $configDir --output $reportDir 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected corrupt expected config to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Config file is invalid.*expected_services.json') { throw "Expected corrupt expected config error" }
+    if (Test-Path $reportDir) { throw "Corrupt expected config created report output" }
+}
+
 Test-Case "Engine handles all raw JSON files missing" {
     $missingRawInput = Join-Path $OutputRoot 'missing-raw-input'
     $missingRawReport = Join-Path $OutputRoot 'missing-raw-report'
