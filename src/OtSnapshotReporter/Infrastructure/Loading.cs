@@ -258,6 +258,11 @@ public static class Loading
 
     private static string? FindLatestRawFolder(string serverPath)
     {
+        if (IsReportOrCollectionFolder(serverPath))
+        {
+            return null;
+        }
+
         var direct = Path.Combine(serverPath, "raw");
         if (Directory.Exists(direct))
         {
@@ -293,6 +298,36 @@ public static class Loading
             .ThenByDescending(candidate => Directory.GetLastWriteTimeUtc(candidate.Raw))
             .Select(candidate => candidate.Raw)
             .FirstOrDefault();
+    }
+
+    private static bool IsReportOrCollectionFolder(string path)
+    {
+        var folderName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (string.IsNullOrWhiteSpace(folderName))
+        {
+            return false;
+        }
+
+        var isReport = File.Exists(Path.Combine(path, "index.html")) &&
+            DateTime.TryParseExact(
+                folderName,
+                ["yyyy-MM-dd_HHmmss", "yyyy-MM-dd_HHmm"],
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out _);
+        if (isReport)
+        {
+            return true;
+        }
+
+        const string collectionPrefix = "collection_";
+        return folderName.StartsWith(collectionPrefix, StringComparison.OrdinalIgnoreCase) &&
+            DateTime.TryParseExact(
+                folderName[collectionPrefix.Length..],
+                "yyyy-MM-dd_HHmmss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out _);
     }
 
     private static bool TryParseSnapshotFolder(string rawPath, out DateTime timestamp)

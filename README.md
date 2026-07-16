@@ -95,7 +95,9 @@ Register a daily scheduled task:
 For per-server local collection, run the collector runner on each target with
 `-PerServer`. The runner scopes collectors to the local computer and writes
 `<output>\<server>\<timestamp>\raw`; the report engine accepts that root and
-selects the newest run for each server.
+selects the newest run for each server. When pointed at a broader share root,
+the engine ignores dated report folders and timestamped `collection_` staging
+folders so they are not treated as servers.
 
 ## Security
 

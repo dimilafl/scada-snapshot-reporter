@@ -175,4 +175,42 @@ public sealed class InfrastructureTests
             }
         }
     }
+
+    [Fact]
+    public void ResolveRawRoot_IgnoresTopLevelReportsAndCollectionStaging()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-top-level-layout-test-" + Guid.NewGuid());
+        var input = Path.Combine(root, "input");
+        var output = Path.Combine(root, "output");
+        try
+        {
+            var serverRaw = Path.Combine(input, "server-a", "raw");
+            var reportRaw = Path.Combine(input, "2026-01-01_010000", "raw");
+            var collectionRaw = Path.Combine(input, "collection_2026-01-02_010000", "raw");
+            Directory.CreateDirectory(serverRaw);
+            Directory.CreateDirectory(reportRaw);
+            Directory.CreateDirectory(collectionRaw);
+            File.WriteAllText(Path.Combine(input, "2026-01-01_010000", "index.html"), "<html></html>");
+
+            const string serviceTemplate = "[{{\"server\":\"{0}\",\"name\":\"{1}\"}}]";
+            File.WriteAllText(Path.Combine(serverRaw, "services.json"), string.Format(serviceTemplate, "server-a", "Current"));
+            File.WriteAllText(Path.Combine(reportRaw, "services.json"), string.Format(serviceTemplate, "report", "ShouldNotLoad"));
+            File.WriteAllText(Path.Combine(collectionRaw, "services.json"), string.Format(serviceTemplate, "collection", "ShouldNotLoad"));
+
+            var merged = Loading.ResolveRawRoot(input, output);
+
+            using var services = JsonDocument.Parse(File.ReadAllText(Path.Combine(merged, "services.json")));
+            var names = services.RootElement.EnumerateArray()
+                .Select(item => item.GetProperty("name").GetString())
+                .ToArray();
+            Assert.Equal(new[] { "Current" }, names);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
 }

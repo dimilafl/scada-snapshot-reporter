@@ -111,7 +111,8 @@ Proposed: Server A --[Task Sched SYSTEM]--> local collect --> \\share\server-a\
 The loader accepts both `server\raw` folders and the scheduled runner's
 `server\timestamp\raw` folders. When several timestamped runs exist for one
 server, it selects the newest timestamp before merging, so stale runs are not
-silently mixed into the report.
+silently mixed into the report. It also ignores dated report folders with
+`index.html` and timestamped `collection_` staging folders during discovery.
 
 ### Strengths
 
