@@ -140,6 +140,43 @@ public static class Writing
         }
     }
 
+    public static void CleanupOldMergeStaging(string outputPath, int retentionDays) =>
+        CleanupOldGeneratedStaging(outputPath, retentionDays, "merged_raw_", "old merged raw staging");
+
+    public static void CleanupOldReportReservations(string outputPath, int retentionDays) =>
+        CleanupOldGeneratedStaging(outputPath, retentionDays, ".report-reservation-", "old report reservation");
+
+    private static void CleanupOldGeneratedStaging(string outputPath, int retentionDays, string prefix, string description)
+    {
+        if (!Directory.Exists(outputPath) || retentionDays <= 0)
+        {
+            return;
+        }
+
+        var cutoff = DateTime.Now.AddDays(-1 * retentionDays);
+        foreach (var dir in GetDirectories(outputPath, description))
+        {
+            var name = Path.GetFileName(dir);
+            if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+                GetLastWriteTimeOrMax(dir) < cutoff)
+            {
+                TryDeleteDirectory(dir, description, name);
+            }
+        }
+    }
+
+    private static DateTime GetLastWriteTimeOrMax(string path)
+    {
+        try
+        {
+            return Directory.GetLastWriteTime(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return DateTime.MaxValue;
+        }
+    }
+
     private static IReadOnlyCollection<string> GetDirectories(string outputPath, string description)
     {
         try

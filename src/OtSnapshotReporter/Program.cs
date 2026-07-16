@@ -144,6 +144,8 @@ string reportRoot;
 string rawOutput;
 try
 {
+    Writing.CleanupOldMergeStaging(options.OutputPath, thresholds.SnapshotRetentionDays);
+    Writing.CleanupOldReportReservations(options.OutputPath, thresholds.SnapshotRetentionDays);
     reportRoot = Writing.CreateAvailableReportRoot(options.OutputPath, DateTime.Now);
     rawOutput = Path.Combine(reportRoot, "raw");
     Directory.CreateDirectory(rawOutput);

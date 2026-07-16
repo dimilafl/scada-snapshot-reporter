@@ -196,6 +196,58 @@ public sealed class InfrastructureTests
         }
     }
 
+    [Fact]
+    public void CleanupOldMergeStaging_RemovesOldFallbackAndKeepsRecent()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-merge-retention-test-" + Guid.NewGuid());
+        try
+        {
+            var oldPath = Path.Combine(root, "merged_raw_old");
+            var recentPath = Path.Combine(root, "merged_raw_recent");
+            Directory.CreateDirectory(oldPath);
+            Directory.CreateDirectory(recentPath);
+            Directory.SetLastWriteTime(oldPath, DateTime.Now.AddDays(-10));
+
+            Writing.CleanupOldMergeStaging(root, retentionDays: 1);
+
+            Assert.False(Directory.Exists(oldPath));
+            Assert.True(Directory.Exists(recentPath));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void CleanupOldReportReservations_RemovesOldReservationsAndKeepsRecent()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-reservation-retention-test-" + Guid.NewGuid());
+        try
+        {
+            var oldPath = Path.Combine(root, ".report-reservation-old");
+            var recentPath = Path.Combine(root, ".report-reservation-recent");
+            Directory.CreateDirectory(oldPath);
+            Directory.CreateDirectory(recentPath);
+            Directory.SetLastWriteTime(oldPath, DateTime.Now.AddDays(-10));
+
+            Writing.CleanupOldReportReservations(root, retentionDays: 1);
+
+            Assert.False(Directory.Exists(oldPath));
+            Assert.True(Directory.Exists(recentPath));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     [Fact] public void AppOptions_Help_ReturnsHelpRequest()
     {
         var options = AppOptions.Parse(["--help"]);
