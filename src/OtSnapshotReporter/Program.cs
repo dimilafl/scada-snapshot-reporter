@@ -140,24 +140,18 @@ catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or A
     return 1;
 }
 
-string reportRoot;
-string rawOutput;
 try
 {
     Writing.CleanupOldMergeStaging(options.OutputPath, thresholds.SnapshotRetentionDays);
     Writing.CleanupOldReportReservations(options.OutputPath, thresholds.SnapshotRetentionDays);
-    reportRoot = Writing.CreateAvailableReportRoot(options.OutputPath, DateTime.Now);
-    rawOutput = Path.Combine(reportRoot, "raw");
-    Directory.CreateDirectory(rawOutput);
 }
 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
 {
-    Console.Error.WriteLine($"Error: Cannot prepare report folder under {options.OutputPath}. {ex.Message}");
+    Console.Error.WriteLine($"Error: Cannot prepare output path: {options.OutputPath}. {ex.Message}");
     return 1;
 }
 
 var rawRoot = Loading.ResolveRawRoot(options.InputPath, options.OutputPath);
-Loading.CopyRawInputs(rawRoot, rawOutput);
 
 var services = Loading.LoadRecords<ServiceRecord>(Path.Combine(rawRoot, "services.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Name), "service");
 var disks = Loading.LoadRecords<DiskRecord>(Path.Combine(rawRoot, "disk_space.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Drive), "disk");
@@ -232,6 +226,21 @@ if (options.AcceptBaseline)
 if (findings.Count == 0)
 {
     Console.WriteLine("No findings detected.");
+}
+
+string reportRoot;
+string rawOutput;
+try
+{
+    reportRoot = Writing.CreateAvailableReportRoot(options.OutputPath, DateTime.Now);
+    rawOutput = Path.Combine(reportRoot, "raw");
+    Directory.CreateDirectory(rawOutput);
+    Loading.CopyRawInputs(rawRoot, rawOutput);
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+{
+    Console.Error.WriteLine($"Error: Cannot prepare report folder under {options.OutputPath}. {ex.Message}");
+    return 1;
 }
 
 var pages = Loading.GetModuleDescriptors().Select(x => (x.HtmlFile, x.DisplayName)).Append(("exceptions.csv", "Exceptions CSV")).ToList();

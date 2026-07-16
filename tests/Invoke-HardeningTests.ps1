@@ -502,8 +502,11 @@ Test-Case "--accept-baseline writes expected configs" {
     New-Item -ItemType Directory -Path $baselineConfig -Force | Out-Null
     Copy-Item -Path .\config\* -Destination $baselineConfig -Recurse -Force
     dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\drift-current --config $baselineConfig --output $baselineOutput --accept-baseline | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Engine failed while accepting baseline" }
     $expected = Get-Content (Join-Path $baselineConfig 'expected_services.json') -Raw | ConvertFrom-Json
     if (@($expected.services).Count -eq 0) { throw "Expected services baseline to be populated" }
+    $reportFolders = @(Get-ChildItem -Path $baselineOutput -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}_\d{6}$' })
+    if ($reportFolders.Count -gt 0) { throw "Accept-baseline created unused report folder(s): $($reportFolders.Name -join ', ')" }
 }
 
 Test-Case "Retention cleanup removes old snapshots" {
