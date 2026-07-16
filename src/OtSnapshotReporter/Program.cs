@@ -106,6 +106,7 @@ var ssrsSubscriptions = Loading.LoadRecords<SsrsSubscriptionRecord>(Path.Combine
 var collectionErrors = Loading.LoadRecords<ErrorRecord>(Path.Combine(rawRoot, "_errors.json"), json, x => !string.IsNullOrWhiteSpace(x.Server) && !string.IsNullOrWhiteSpace(x.Error), "collection error");
 var previous = Loading.LoadPreviousSnapshot(options.PreviousPath, json);
 Writing.CleanupOldSnapshots(options.OutputPath, thresholds.SnapshotRetentionDays);
+Writing.CleanupOldCollectionStaging(options.OutputPath, thresholds.SnapshotRetentionDays);
 var observedServers = services.Select(x => x.Server)
     .Concat(disks.Select(x => x.Server))
     .Concat(tasks.Select(x => x.Server))

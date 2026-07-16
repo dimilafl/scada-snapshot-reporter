@@ -40,6 +40,30 @@ public static class Writing
         }
     }
 
+    public static void CleanupOldCollectionStaging(string outputPath, int retentionDays)
+    {
+        if (!Directory.Exists(outputPath) || retentionDays <= 0)
+        {
+            return;
+        }
+
+        var cutoff = DateTime.Now.AddDays(-1 * retentionDays);
+        foreach (var dir in Directory.GetDirectories(outputPath))
+        {
+            var name = Path.GetFileName(dir);
+            const string prefix = "collection_";
+            if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+                !DateTime.TryParseExact(name[prefix.Length..], "yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp) ||
+                timestamp >= cutoff)
+            {
+                continue;
+            }
+
+            Directory.Delete(dir, recursive: true);
+            Console.WriteLine($"Cleaned up old collection staging: {name}");
+        }
+    }
+
     public static void WriteBaselineConfigs(string configPath, IReadOnlyCollection<ServiceRecord> services, IReadOnlyCollection<TaskRecord> tasks, IReadOnlyCollection<SoftwareRecord> software, IReadOnlyCollection<DriverRecord> drivers)
     {
         Directory.CreateDirectory(configPath);

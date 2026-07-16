@@ -332,6 +332,8 @@ Test-Case "Retention cleanup removes old snapshots" {
     $retentionConfig = Join-Path $OutputRoot 'retention-config'
     New-Item -ItemType Directory -Path (Join-Path $retentionOutput '2001-01-01_0000\raw') -Force | Out-Null
     Set-Content -Path (Join-Path $retentionOutput '2001-01-01_0000\index.html') -Value '<html></html>'
+    New-Item -ItemType Directory -Path (Join-Path $retentionOutput 'collection_2001-01-01_000000') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $retentionOutput 'collection_2999-01-01_000000') -Force | Out-Null
     New-Item -ItemType Directory -Path $retentionConfig -Force | Out-Null
     Copy-Item -Path .\config\* -Destination $retentionConfig -Recurse -Force
     @{
@@ -345,6 +347,12 @@ Test-Case "Retention cleanup removes old snapshots" {
     dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $retentionConfig --output $retentionOutput | Out-Null
     if (Test-Path (Join-Path $retentionOutput '2001-01-01_0000')) {
         throw "Old snapshot was not removed"
+    }
+    if (Test-Path (Join-Path $retentionOutput 'collection_2001-01-01_000000')) {
+        throw "Old collection staging folder was not removed"
+    }
+    if (-not (Test-Path (Join-Path $retentionOutput 'collection_2999-01-01_000000'))) {
+        throw "Future collection staging folder was removed unexpectedly"
     }
 }
 
