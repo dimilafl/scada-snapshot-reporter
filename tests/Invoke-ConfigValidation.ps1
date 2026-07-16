@@ -43,6 +43,12 @@ if ($thresholds) {
     if ($thresholds.disk_free_percent_critical -gt $thresholds.disk_free_percent_warning) {
         Add-Error "Critical disk threshold must be less than or equal to warning threshold."
     }
+    if ($thresholds.task_not_run_hours_warning -lt 0) {
+        Add-Error "task_not_run_hours_warning must be non-negative."
+    }
+    if ($thresholds.disk_drop_percent_warning -lt 0) {
+        Add-Error "disk_drop_percent_warning must be non-negative."
+    }
     if ($thresholds.snapshot_retention_days -lt 1) {
         Add-Error "snapshot_retention_days must be at least 1."
     }

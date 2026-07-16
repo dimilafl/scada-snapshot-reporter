@@ -72,6 +72,33 @@ if (File.Exists(thresholdsPath))
     }
 }
 
+var thresholdErrors = new List<string>();
+if (thresholds.DiskFreePercentCritical < 0 || thresholds.DiskFreePercentWarning < 0)
+{
+    thresholdErrors.Add("disk free thresholds must be non-negative");
+}
+if (thresholds.DiskFreePercentCritical > thresholds.DiskFreePercentWarning)
+{
+    thresholdErrors.Add("critical disk threshold must be less than or equal to warning threshold");
+}
+if (thresholds.TaskNotRunHoursWarning < 0)
+{
+    thresholdErrors.Add("task_not_run_hours_warning must be non-negative");
+}
+if (thresholds.DiskDropPercentWarning < 0)
+{
+    thresholdErrors.Add("disk_drop_percent_warning must be non-negative");
+}
+if (thresholds.SnapshotRetentionDays < 1)
+{
+    thresholdErrors.Add("snapshot_retention_days must be at least 1");
+}
+if (thresholdErrors.Count > 0)
+{
+    Console.Error.WriteLine($"Error: Invalid threshold configuration in {thresholdsPath}: {string.Join("; ", thresholdErrors)}");
+    return 1;
+}
+
 var serversPath = Path.Combine(options.ConfigPath, "servers.json");
 var configuredServers = new ServersConfig();
 if (File.Exists(serversPath))

@@ -516,6 +516,35 @@ Test-Case "Engine rejects a corrupt threshold config" {
     if (Test-Path $reportDir) { throw "Corrupt threshold config created report output" }
 }
 
+Test-Case "Engine rejects invalid threshold values" {
+    $configDir = Join-Path $OutputRoot 'invalid-threshold-values'
+    $reportDir = Join-Path $OutputRoot 'invalid-threshold-report'
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    Copy-Item .\config\* -Destination $configDir -Recurse -Force
+    @{
+        disk_free_percent_warning = 10
+        disk_free_percent_critical = 20
+        task_not_run_hours_warning = -1
+        reboot_detection_enabled = $true
+        disk_drop_percent_warning = -1
+        snapshot_retention_days = 0
+    } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $configDir 'thresholds.json') -Encoding UTF8
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $configDir --output $reportDir 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected invalid threshold values to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Invalid threshold configuration') { throw "Expected invalid threshold configuration error" }
+    if (Test-Path $reportDir) { throw "Invalid threshold values created report output" }
+}
+
 Test-Case "Engine rejects a corrupt servers config" {
     $configDir = Join-Path $OutputRoot 'corrupt-servers-config'
     $reportDir = Join-Path $OutputRoot 'corrupt-servers-report'
