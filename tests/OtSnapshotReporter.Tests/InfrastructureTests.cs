@@ -105,4 +105,42 @@ public sealed class InfrastructureTests
             }
         }
     }
+
+    [Fact]
+    public void ResolveRawRoot_MergesLatestNestedPerServerFolders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-nested-snapshot-test-" + Guid.NewGuid());
+        var input = Path.Combine(root, "input");
+        var output = Path.Combine(root, "output");
+        try
+        {
+            var oldRaw = Path.Combine(input, "server-a", "2026-01-01_010000", "raw");
+            var latestRaw = Path.Combine(input, "server-a", "2026-01-02_010000", "raw");
+            var serverBRaw = Path.Combine(input, "server-b", "2026-01-03_010000", "raw");
+            Directory.CreateDirectory(oldRaw);
+            Directory.CreateDirectory(latestRaw);
+            Directory.CreateDirectory(serverBRaw);
+
+            const string serviceTemplate = "[{{\"server\":\"{0}\",\"name\":\"{1}\",\"displayName\":\"{1}\",\"status\":\"Running\",\"startupType\":\"Automatic\",\"startName\":\"SYSTEM\"}}]";
+            File.WriteAllText(Path.Combine(oldRaw, "services.json"), string.Format(serviceTemplate, "server-a", "Old"));
+            File.WriteAllText(Path.Combine(latestRaw, "services.json"), string.Format(serviceTemplate, "server-a", "Latest"));
+            File.WriteAllText(Path.Combine(serverBRaw, "services.json"), string.Format(serviceTemplate, "server-b", "Current"));
+
+            var merged = Loading.ResolveRawRoot(input, output);
+
+            using var services = JsonDocument.Parse(File.ReadAllText(Path.Combine(merged, "services.json")));
+            var names = services.RootElement.EnumerateArray()
+                .Select(item => item.GetProperty("name").GetString())
+                .OrderBy(name => name)
+                .ToArray();
+            Assert.Equal(new[] { "Current", "Latest" }, names);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
 }

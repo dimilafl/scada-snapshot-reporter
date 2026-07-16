@@ -293,13 +293,28 @@ Test-Case "Per-server collection runs" {
     if ($rawDirs.Count -eq 0) {
         throw "No nested raw folder found for per-server collection"
     }
+    $servicesPath = Join-Path $rawDirs[0].FullName 'services.json'
+    Assert-FileExists $servicesPath
+    $services = @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $servicesPath -Raw))
+    if ($services.Count -eq 0) { throw "Per-server collection emitted no service records" }
+    $unexpectedServers = @($services | Where-Object { $_.server -ne $env:COMPUTERNAME })
+    if ($unexpectedServers.Count -gt 0) {
+        throw "Per-server collection targeted unexpected server(s): $(@($unexpectedServers.server) -join ', ')"
+    }
 }
 
 Test-Case "Engine merges per-server data" {
     $perServerReport = Join-Path $OutputRoot 'per-server-report'
     dotnet run --project .\src\OtSnapshotReporter -- --input $perServerRun --config .\config --output $perServerReport | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Engine failed to merge per-server data" }
-    Get-LatestReport $perServerReport | Out-Null
+    $latest = Get-LatestReport $perServerReport
+    $mergedServicesPath = Join-Path $latest 'raw\services.json'
+    Assert-FileExists $mergedServicesPath
+    $mergedServices = @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $mergedServicesPath -Raw))
+    if ($mergedServices.Count -eq 0) { throw "Per-server merge produced no service records" }
+    if (@($mergedServices | Where-Object { [string]::IsNullOrWhiteSpace($_.server) }).Count -gt 0) {
+        throw "Per-server merge produced a service record without a server"
+    }
 }
 
 Test-Case "--accept-baseline writes expected configs" {
@@ -390,6 +405,44 @@ Test-Case "Engine rejects a missing input path" {
 
     if ($exitCode -ne 1) { throw "Expected missing input to exit 1, got $exitCode" }
     if (($output -join "`n") -notmatch 'Input path does not exist') { throw "Expected missing input error" }
+}
+
+Test-Case "Engine rejects a missing config path" {
+    $missingConfig = Join-Path $OutputRoot 'missing-config-path'
+    $missingReport = Join-Path $OutputRoot 'missing-config-report'
+    if (Test-Path $missingConfig) { Remove-Item -LiteralPath $missingConfig -Recurse -Force }
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config $missingConfig --output $missingReport 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected missing config to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Config path does not exist') { throw "Expected missing config error" }
+}
+
+Test-Case "Engine rejects a missing previous snapshot path" {
+    $missingPrevious = Join-Path $OutputRoot 'missing-previous-path'
+    $missingReport = Join-Path $OutputRoot 'missing-previous-report'
+    if (Test-Path $missingPrevious) { Remove-Item -LiteralPath $missingPrevious -Recurse -Force }
+
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = dotnet run --project .\src\OtSnapshotReporter -- --input .\samples\demo --config .\config --output $missingReport --previous $missingPrevious 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    if ($exitCode -ne 1) { throw "Expected missing previous snapshot to exit 1, got $exitCode" }
+    if (($output -join "`n") -notmatch 'Previous snapshot path does not exist') { throw "Expected missing previous snapshot error" }
 }
 
 Test-Case "Engine handles all raw JSON files missing" {

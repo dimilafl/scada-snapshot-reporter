@@ -115,4 +115,32 @@ public sealed class LoadingTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public void LoadPreviousSnapshot_UsesLatestNestedPerServerFolders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ot-previous-nested-" + Guid.NewGuid());
+        try
+        {
+            var oldRaw = Path.Combine(root, "server-a", "2026-01-01_010000", "raw");
+            var latestRaw = Path.Combine(root, "server-a", "2026-01-02_010000", "raw");
+            Directory.CreateDirectory(oldRaw);
+            Directory.CreateDirectory(latestRaw);
+            File.WriteAllText(
+                Path.Combine(oldRaw, "services.json"),
+                "[{\"Server\":\"server-a\",\"Name\":\"Old\",\"DisplayName\":\"Old\",\"Status\":\"Running\",\"StartupType\":\"Automatic\",\"StartName\":\"SYSTEM\"}]");
+            File.WriteAllText(
+                Path.Combine(latestRaw, "services.json"),
+                "[{\"Server\":\"server-a\",\"Name\":\"Latest\",\"DisplayName\":\"Latest\",\"Status\":\"Running\",\"StartupType\":\"Automatic\",\"StartName\":\"SYSTEM\"}]");
+
+            var previous = Loading.LoadPreviousSnapshot(root, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            var service = Assert.Single(previous.Services);
+            Assert.Equal("Latest", service.Name);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

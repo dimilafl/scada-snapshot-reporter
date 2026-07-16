@@ -7,6 +7,10 @@ function Get-ConfiguredServers {
         [string] $ConfigPath
     )
 
+    if (-not [string]::IsNullOrWhiteSpace($env:OT_SNAPSHOT_TARGET_SERVER)) {
+        return @($env:OT_SNAPSHOT_TARGET_SERVER)
+    }
+
     $serversFile = Join-Path $ConfigPath 'servers.json'
     if (-not (Test-Path $serversFile)) {
         return @($env:COMPUTERNAME)

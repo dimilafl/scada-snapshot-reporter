@@ -108,6 +108,11 @@ Proposed: Server A --[Task Sched SYSTEM]--> local collect --> \\share\server-a\
           Central Host --[C# Engine]--> reads merged \\share\ --> report
 ```
 
+The loader accepts both `server\raw` folders and the scheduled runner's
+`server\timestamp\raw` folders. When several timestamped runs exist for one
+server, it selects the newest timestamp before merging, so stale runs are not
+silently mixed into the report.
+
 ### Strengths
 
 - **Eliminates WinRM dependency.** No open inbound port on target servers post-deployment. Only SMB 445 needed for share access (already open for OT file shares).
@@ -132,7 +137,7 @@ Proposed: Server A --[Task Sched SYSTEM]--> local collect --> \\share\server-a\
 | **Phase 2 modules have no diff detection.** (Bug #1 above.) File share that was up last run and is down now produces no drift finding. | High | Add Phase 2 records to `PreviousSnapshot` and implement diff methods. |
 | **Unbounded recursion in backup collector.** (Bug #4 above.) Misconfigured path hangs the collector. | Medium | Add depth limit or file count cap. |
 | **No "expected servers" vs "actual servers" tracking.** Engine loads whatever data is present. Missing server is not detected. | Medium | **Resolved.** Engine reads `servers.json` and flags configured servers with no snapshot data as a Critical collection finding. |
-| **Engine merge step.** Separate `Merge-Snapshots.ps1` would be unnecessary coupling. Engine should discover per-server subdirs and load in memory. | Low | Engine discovers `--input` subdirs, iterates `raw/*.json` per server, concatenates. No separate merge tool. |
+| **Engine merge step.** Separate `Merge-Snapshots.ps1` would be unnecessary coupling. Engine should discover per-server subdirs and load in memory. | Low | **Resolved.** Engine discovers both direct and timestamped per-server `raw/` folders, selects the newest run per server, and merges in memory. No separate merge tool. |
 
 ---
 

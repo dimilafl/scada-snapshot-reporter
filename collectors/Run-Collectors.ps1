@@ -16,34 +16,53 @@ $collectorScripts = @(Get-ChildItem -Path $PSScriptRoot -Filter 'Collect-*.ps1' 
 $total = $collectorScripts.Count
 $index = 0
 $failedCollectors = New-Object System.Collections.Generic.List[string]
-foreach ($script in $collectorScripts) {
-    $index++
-    Write-Host "[$index/$total] Running $($script.Name)..." -ForegroundColor Cyan
-    $collectorArgs = @{
-        ConfigPath = $ConfigPath
-        OutputPath = $collectorOutputPath
-    }
-    try {
-        if ($RedactPaths) {
-            $collectorCommand = Get-Command -Name $script.FullName -ErrorAction Stop
-            if ($collectorCommand.Parameters.ContainsKey('RedactPaths')) {
-                $collectorArgs.RedactPaths = $true
+
+$hadTargetServerOverride = Test-Path Env:OT_SNAPSHOT_TARGET_SERVER
+$previousTargetServerOverride = $env:OT_SNAPSHOT_TARGET_SERVER
+if ($PerServer) {
+    $env:OT_SNAPSHOT_TARGET_SERVER = $env:COMPUTERNAME
+}
+
+try {
+    foreach ($script in $collectorScripts) {
+        $index++
+        Write-Host "[$index/$total] Running $($script.Name)..." -ForegroundColor Cyan
+        $collectorArgs = @{
+            ConfigPath = $ConfigPath
+            OutputPath = $collectorOutputPath
+        }
+        try {
+            if ($RedactPaths) {
+                $collectorCommand = Get-Command -Name $script.FullName -ErrorAction Stop
+                if ($collectorCommand.Parameters.ContainsKey('RedactPaths')) {
+                    $collectorArgs.RedactPaths = $true
+                }
+            }
+
+            $LASTEXITCODE = 0
+            & $script.FullName @collectorArgs
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "  $($script.Name) exited with code $LASTEXITCODE"
+                $failedCollectors.Add($script.Name)
+            }
+            else {
+                Write-Host "  Done." -ForegroundColor Green
             }
         }
-
-        $LASTEXITCODE = 0
-        & $script.FullName @collectorArgs
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "  $($script.Name) exited with code $LASTEXITCODE"
+        catch {
+            Write-Warning "  $($script.Name) threw: $($_.Exception.Message)"
             $failedCollectors.Add($script.Name)
         }
-        else {
-            Write-Host "  Done." -ForegroundColor Green
-        }
     }
-    catch {
-        Write-Warning "  $($script.Name) threw: $($_.Exception.Message)"
-        $failedCollectors.Add($script.Name)
+}
+finally {
+    if ($PerServer) {
+        if ($hadTargetServerOverride) {
+            $env:OT_SNAPSHOT_TARGET_SERVER = $previousTargetServerOverride
+        }
+        else {
+            Remove-Item Env:OT_SNAPSHOT_TARGET_SERVER -ErrorAction SilentlyContinue
+        }
     }
 }
 

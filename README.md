@@ -90,6 +90,11 @@ Register a daily scheduled task:
   -DailyAt 06:00
 ```
 
+For per-server local collection, run the collector runner on each target with
+`-PerServer`. The runner scopes collectors to the local computer and writes
+`<output>\<server>\<timestamp>\raw`; the report engine accepts that root and
+selects the newest run for each server.
+
 ## Security
 
 See [SECURITY.md](SECURITY.md). Collectors are read-only. Keep generated reports on

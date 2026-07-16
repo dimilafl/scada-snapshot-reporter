@@ -31,6 +31,18 @@ if (!Directory.Exists(options.InputPath))
     return 1;
 }
 
+if (!Directory.Exists(options.ConfigPath))
+{
+    Console.Error.WriteLine($"Error: Config path does not exist: {options.ConfigPath}");
+    return 1;
+}
+
+if (!string.IsNullOrWhiteSpace(options.PreviousPath) && !Directory.Exists(options.PreviousPath))
+{
+    Console.Error.WriteLine($"Error: Previous snapshot path does not exist: {options.PreviousPath}");
+    return 1;
+}
+
 var runStamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss", CultureInfo.InvariantCulture);
 var reportRoot = Path.Combine(options.OutputPath, runStamp);
 var rawOutput = Path.Combine(reportRoot, "raw");

@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+using System.Globalization;
+using System.Text.Json;
 using OtSnapshotReporter.Models;
 
 namespace OtSnapshotReporter.Infrastructure;
@@ -60,12 +61,9 @@ public static class Loading
             return Path.Combine(inputPath, "raw");
         }
 
-        var serverDirs = Directory.GetDirectories(inputPath)
-            .Select(d => new { Path = d, Raw = Path.Combine(d, "raw") })
-            .Where(x => Directory.Exists(x.Raw))
-            .ToList();
+        var serverRawFolders = FindPerServerRawFolders(inputPath);
 
-        if (serverDirs.Count == 0)
+        if (serverRawFolders.Count == 0)
         {
             Console.Error.WriteLine($"Warning: No raw/ or server directories found under {inputPath}");
             return Path.Combine(inputPath, "raw");
@@ -78,8 +76,8 @@ public static class Loading
         }
 
         Directory.CreateDirectory(mergedDir);
-        var groupedFiles = serverDirs
-            .SelectMany(sd => Directory.GetFiles(sd.Raw, "*.json"))
+        var groupedFiles = serverRawFolders
+            .SelectMany(raw => Directory.GetFiles(raw, "*.json"))
             .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
         var mergedErrorItems = new List<JsonElement>();
 
@@ -88,7 +86,7 @@ public static class Loading
             var mergedItems = new List<JsonElement>();
             foreach (var file in group)
             {
-                var server = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file)) ?? "unknown") ?? "unknown";
+                var server = GetServerName(Path.GetDirectoryName(file));
                 try
                 {
                     using var document = JsonDocument.Parse(File.ReadAllText(file));
@@ -196,8 +194,86 @@ public static class Loading
     }
 
     private static bool HasPerServerRawFolders(string path) =>
-        Directory.Exists(path) && Directory.GetDirectories(path)
-            .Any(directory => Directory.Exists(Path.Combine(directory, "raw")));
+        FindPerServerRawFolders(path).Count > 0;
+
+    // Per-server runs nest raw data under a timestamp; one current folder is selected per server.
+    private static List<string> FindPerServerRawFolders(string inputPath)
+    {
+        if (!Directory.Exists(inputPath))
+        {
+            return [];
+        }
+
+        return Directory.GetDirectories(inputPath)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .Select(FindLatestRawFolder)
+            .Where(path => path is not null)
+            .Select(path => path!)
+            .ToList();
+    }
+
+    private static string? FindLatestRawFolder(string serverPath)
+    {
+        var direct = Path.Combine(serverPath, "raw");
+        if (Directory.Exists(direct))
+        {
+            return direct;
+        }
+
+        string[] candidates;
+        try
+        {
+            candidates = Directory.GetDirectories(serverPath, "raw", SearchOption.AllDirectories);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+
+        return candidates
+            .Select(path => new
+            {
+                Path = path,
+                Timestamp = TryParseSnapshotFolder(path, out var timestamp) ? timestamp : (DateTime?)null,
+                LastWrite = Directory.GetLastWriteTimeUtc(path)
+            })
+            .OrderByDescending(candidate => candidate.Timestamp.HasValue)
+            .ThenByDescending(candidate => candidate.Timestamp ?? DateTime.MinValue)
+            .ThenByDescending(candidate => candidate.LastWrite)
+            .Select(candidate => candidate.Path)
+            .FirstOrDefault();
+    }
+
+    private static bool TryParseSnapshotFolder(string rawPath, out DateTime timestamp)
+    {
+        var folderName = Directory.GetParent(rawPath)?.Name;
+        return DateTime.TryParseExact(
+            folderName,
+            ["yyyy-MM-dd_HHmmss", "yyyy-MM-dd_HHmm"],
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out timestamp);
+    }
+
+    private static string GetServerName(string? rawPath)
+    {
+        if (string.IsNullOrWhiteSpace(rawPath))
+        {
+            return "unknown";
+        }
+
+        var serverFolder = Directory.GetParent(rawPath);
+        if (serverFolder is not null && TryParseSnapshotFolder(rawPath, out _))
+        {
+            serverFolder = serverFolder.Parent;
+        }
+
+        return string.IsNullOrWhiteSpace(serverFolder?.Name) ? "unknown" : serverFolder.Name;
+    }
 
     public static List<ModuleDescriptor> GetModuleDescriptors() =>
     [
