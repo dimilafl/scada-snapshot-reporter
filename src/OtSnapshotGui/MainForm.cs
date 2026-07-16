@@ -18,6 +18,7 @@ internal sealed class MainForm : Form
     private readonly Button _runButton = new() { Text = "Collect && Report", Height = 34 };
     private readonly Button _viewButton = new() { Text = "View Report", Height = 34, Enabled = false };
     private readonly Dictionary<string, Label> _badges = new(StringComparer.OrdinalIgnoreCase);
+    private bool _serversFileInvalid;
 
     public MainForm()
     {
@@ -155,18 +156,32 @@ internal sealed class MainForm : Form
     private void LoadServers()
     {
         _servers.Items.Clear();
+        _serversFileInvalid = false;
         var path = ServersPath();
         if (!File.Exists(path)) return;
-        var json = JsonNode.Parse(File.ReadAllText(path));
-        foreach (var server in json?["servers"]?.AsArray() ?? [])
+        try
         {
-            var name = server?["name"]?.GetValue<string>();
-            if (!string.IsNullOrWhiteSpace(name)) _servers.Items.Add(name);
+            var json = JsonNode.Parse(File.ReadAllText(path));
+            foreach (var server in json?["servers"]?.AsArray() ?? [])
+            {
+                var name = server?["name"]?.GetValue<string>();
+                if (!string.IsNullOrWhiteSpace(name)) _servers.Items.Add(name);
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or IOException)
+        {
+            _serversFileInvalid = true;
+            AppendLine($"WARNING: Could not load servers.json: {ex.Message}");
         }
     }
 
     private void SaveServers()
     {
+        if (_serversFileInvalid)
+        {
+            throw new InvalidOperationException("servers.json is invalid; add or remove a server to replace it deliberately.");
+        }
+
         Directory.CreateDirectory(_configPath.Text);
         var servers = new JsonArray();
         foreach (var item in _servers.Items) servers.Add(new JsonObject { ["name"] = item.ToString(), ["roles"] = new JsonArray() });
@@ -192,32 +207,40 @@ internal sealed class MainForm : Form
         if (name.Length == 0 || _servers.Items.Contains(name)) return;
         _servers.Items.Add(name);
         _serverInput.Clear();
+        _serversFileInvalid = false;
         SaveServers();
     }
 
     private void RemoveServer()
     {
+        var removed = false;
         while (_servers.SelectedItems.Count > 0)
         {
             var selected = _servers.SelectedItems[0];
-            if (selected is not null) _servers.Items.Remove(selected);
+            if (selected is not null)
+            {
+                _servers.Items.Remove(selected);
+                removed = true;
+            }
         }
+        if (!removed) return;
+        _serversFileInvalid = false;
         SaveServers();
     }
 
     private async Task CollectAndReportAsync()
     {
-        SaveSettingsFromUi();
-        SaveServers();
         _console.Clear();
         _runButton.Enabled = false;
         _viewButton.Enabled = false;
-        SetStatus("Running collectors...");
-        var inputPath = Path.Combine(_outputRoot.Text, "manual-run");
-        Directory.CreateDirectory(inputPath);
 
         try
         {
+            SaveSettingsFromUi();
+            SaveServers();
+            SetStatus("Running collectors...");
+            var inputPath = NewCollectionPath();
+            Directory.CreateDirectory(inputPath);
             await RunProcessAsync("powershell.exe", [
                 "-NoProfile",
                 "-ExecutionPolicy",
@@ -261,14 +284,20 @@ internal sealed class MainForm : Form
         {
             start.ArgumentList.Add(argument);
         }
-        using var process = new Process { StartInfo = start, EnableRaisingEvents = true };
-        process.OutputDataReceived += (_, e) => { if (e.Data is not null) AppendLine(e.Data); };
-        process.ErrorDataReceived += (_, e) => { if (e.Data is not null) AppendLine(e.Data); };
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-        await process.WaitForExitAsync();
+        using var process = new Process { StartInfo = start };
+        if (!process.Start()) throw new InvalidOperationException($"Could not start {fileName}");
+        var outputTask = PumpOutputAsync(process.StandardOutput);
+        var errorTask = PumpOutputAsync(process.StandardError);
+        await Task.WhenAll(process.WaitForExitAsync(), outputTask, errorTask);
         if (process.ExitCode != 0) throw new InvalidOperationException($"{fileName} exited with {process.ExitCode}");
+    }
+
+    private async Task PumpOutputAsync(StreamReader reader)
+    {
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            AppendLine(line);
+        }
     }
 
     private void UpdateBadges(string reportDir)
@@ -342,6 +371,17 @@ internal sealed class MainForm : Form
     private string ServersPath() => Path.Combine(_configPath.Text, "servers.json");
     private string CollectorScript() => _settings.CollectorScript;
     private string EngineHost() => _engineExe.Text.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? "dotnet" : _engineExe.Text;
+    private string NewCollectionPath()
+    {
+        var stamp = DateTime.Now;
+        while (true)
+        {
+            var candidate = Path.Combine(_outputRoot.Text, $"collection_{stamp:yyyy-MM-dd_HHmmss}");
+            if (!Directory.Exists(candidate)) return candidate;
+            stamp = stamp.AddSeconds(1);
+        }
+    }
+
     private IEnumerable<string> EngineArgs(string inputPath)
     {
         if (_engineExe.Text.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))

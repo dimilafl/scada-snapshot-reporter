@@ -20,7 +20,14 @@ internal sealed class GuiSettings
             return new GuiSettings();
         }
 
-        return JsonSerializer.Deserialize<GuiSettings>(File.ReadAllText(SettingsPath), JsonOptions()) ?? new GuiSettings();
+        try
+        {
+            return JsonSerializer.Deserialize<GuiSettings>(File.ReadAllText(SettingsPath), JsonOptions()) ?? new GuiSettings();
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return new GuiSettings();
+        }
     }
 
     public void Save() => File.WriteAllText(SettingsPath, JsonSerializer.Serialize(this, JsonOptions()));
